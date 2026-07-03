@@ -1,105 +1,72 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { DEMO_USERS, ROLES, getHomePath } from '../constants';
-
-const STORAGE_KEY = 'internhub_auth';
-const USERS_KEY = 'internhub_users';
+import { ROLES, getHomePath } from '../constants';
+import {
+  loginUser,
+  registerStudent,
+  fetchCurrentUser,
+  refreshSession,
+  logoutUser,
+} from '../services/authService';
+import { hasStoredSession } from '../services/tokenStorage';
 
 const AuthContext = createContext(null);
 
-function loadSession() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadRegisteredUsers() {
-  try {
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function getAllUsers() {
-  return { ...DEMO_USERS, ...loadRegisteredUsers() };
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => loadSession());
-  const [registeredUsers, setRegisteredUsers] = useState(() => loadRegisteredUsers());
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [user]);
+    let cancelled = false;
 
-  useEffect(() => {
-    localStorage.setItem(USERS_KEY, JSON.stringify(registeredUsers));
-  }, [registeredUsers]);
+    async function restoreSession() {
+      if (!hasStoredSession()) {
+        setIsLoading(false);
+        return;
+      }
 
-  const login = useCallback((email, password, expectedRole) => {
-    const normalized = email.toLowerCase().trim();
-    const account = getAllUsers()[normalized];
-    if (!account || account.password !== password) {
-      return { success: false, error: 'Invalid email or password' };
+      try {
+        const currentUser = await fetchCurrentUser();
+        if (!cancelled) setUser(currentUser);
+      } catch {
+        try {
+          const currentUser = await refreshSession();
+          if (!cancelled) setUser(currentUser);
+        } catch {
+          if (!cancelled) setUser(null);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     }
-    if (expectedRole && account.role !== expectedRole) {
-      return {
-        success: false,
-        error:
-          expectedRole === ROLES.SUPERADMIN
-            ? 'Access denied. Superadmin credentials required.'
-            : 'This account cannot access the internship portal.',
-      };
-    }
-    const session = {
-      email: normalized,
-      name: account.name,
-      role: account.role,
-      avatar: account.avatar,
-    };
-    setUser(session);
-    return { success: true, redirect: getHomePath(account.role) };
+
+    restoreSession();
+    return () => { cancelled = true; };
   }, []);
 
-  const signup = useCallback(({ firstName, lastName, email, password }) => {
-    const normalized = email.toLowerCase().trim();
-    const allUsers = { ...DEMO_USERS, ...registeredUsers };
+  const login = useCallback(async (email, password, expectedRole) => {
+    const result = await loginUser({ email, password, expectedRole });
+    if (!result.success) return result;
 
-    if (allUsers[normalized]) {
-      return { success: false, error: 'An account with this email already exists' };
-    }
+    setUser(result.user);
+    return { success: true, redirect: getHomePath(result.user.role) };
+  }, []);
 
-    const name = `${firstName.trim()} ${lastName.trim()}`;
-    const newUser = {
-      password,
-      role: ROLES.STUDENT,
-      name,
-      avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(normalized)}`,
-    };
+  const signup = useCallback(async ({ firstName, lastName, email, password }) => {
+    const result = await registerStudent({ firstName, lastName, email, password });
+    if (!result.success) return result;
 
-    setRegisteredUsers((prev) => ({ ...prev, [normalized]: newUser }));
-    setUser({
-      email: normalized,
-      name,
-      role: ROLES.STUDENT,
-      avatar: newUser.avatar,
-    });
-
+    setUser(result.user);
     return { success: true, redirect: getHomePath(ROLES.STUDENT) };
-  }, [registeredUsers]);
+  }, []);
 
-  const logout = useCallback(() => setUser(null), []);
+  const logout = useCallback(async () => {
+    await logoutUser();
+    setUser(null);
+  }, []);
 
   const value = {
     user,
+    isLoading,
     isAuthenticated: Boolean(user),
     isSuperadmin: user?.role === ROLES.SUPERADMIN,
     isStudent: user?.role === ROLES.STUDENT,

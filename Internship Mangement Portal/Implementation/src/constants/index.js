@@ -3,39 +3,54 @@ export const ROLES = {
   STUDENT: 'student',
 };
 
+const STUDENT_BASE = '/portal/student';
+const ADMIN_BASE = '/portal/superadmin';
+
 export const ROUTES = {
   LANDING: '/',
-  STUDENT_LOGIN: '/login',
-  STUDENT_SIGNUP: '/signup',
-  SUPERADMIN_LOGIN: '/portal/superadmin/login',
-  LOGIN: '/login',
-  FORGOT_PASSWORD: '/forgot-password',
-  SUPERADMIN: {
-    DASHBOARD: '/portal/superadmin',
-    INTERNS: '/portal/superadmin/interns',
-    TASKS: '/portal/superadmin/tasks',
-    taskDetail: (id) => `/portal/superadmin/tasks/${id}`,
-    TASK_SUBMIT: '/portal/superadmin/tasks/submit',
-    PROGRESS: '/portal/superadmin/progress',
-    REPORTS: '/portal/superadmin/reports',
-    FEEDBACK: '/portal/superadmin/reports/feedback',
-    NOTIFICATIONS: '/portal/superadmin/notifications',
-    PROFILE: '/portal/superadmin/profile',
-    SETTINGS: '/portal/superadmin/settings',
-  },
+
+  // Student internship portal (separate path)
   STUDENT: {
-    DASHBOARD: '/student/dashboard',
-    TASKS: '/student/tasks',
-    taskDetail: (id) => `/student/tasks/${id}`,
-    TASK_SUBMIT: '/student/tasks/submit',
-    PROGRESS: '/student/progress',
-    REPORTS: '/student/reports',
-    FEEDBACK: '/student/reports/feedback',
-    NOTIFICATIONS: '/student/notifications',
-    PROFILE: '/student/profile',
-    SETTINGS: '/student/settings',
-    CERTIFICATE: '/student/certificate',
+    PORTAL: STUDENT_BASE,
+    LOGIN: `${STUDENT_BASE}/login`,
+    SIGNUP: `${STUDENT_BASE}/signup`,
+    FORGOT_PASSWORD: `${STUDENT_BASE}/forgot-password`,
+    DASHBOARD: `${STUDENT_BASE}/dashboard`,
+    TASKS: `${STUDENT_BASE}/tasks`,
+    taskDetail: (id) => `${STUDENT_BASE}/tasks/${id}`,
+    TASK_SUBMIT: `${STUDENT_BASE}/tasks/submit`,
+    PROGRESS: `${STUDENT_BASE}/progress`,
+    REPORTS: `${STUDENT_BASE}/reports`,
+    FEEDBACK: `${STUDENT_BASE}/reports/feedback`,
+    NOTIFICATIONS: `${STUDENT_BASE}/notifications`,
+    PROFILE: `${STUDENT_BASE}/profile`,
+    SETTINGS: `${STUDENT_BASE}/settings`,
+    CERTIFICATE: `${STUDENT_BASE}/certificate`,
   },
+
+  // Superadmin control portal (separate path)
+  SUPERADMIN: {
+    LOGIN: `${ADMIN_BASE}/login`,
+    DASHBOARD: ADMIN_BASE,
+    INTERNS: `${ADMIN_BASE}/interns`,
+    TASKS: `${ADMIN_BASE}/tasks`,
+    taskDetail: (id) => `${ADMIN_BASE}/tasks/${id}`,
+    TASK_SUBMIT: `${ADMIN_BASE}/tasks/submit`,
+    PROGRESS: `${ADMIN_BASE}/progress`,
+    REPORTS: `${ADMIN_BASE}/reports`,
+    FEEDBACK: `${ADMIN_BASE}/reports/feedback`,
+    NOTIFICATIONS: `${ADMIN_BASE}/notifications`,
+    PROFILE: `${ADMIN_BASE}/profile`,
+    SETTINGS: `${ADMIN_BASE}/settings`,
+  },
+
+  // Aliases (backward compatibility)
+  INTERNSHIP_PORTAL: `${STUDENT_BASE}`,
+  STUDENT_LOGIN: `${STUDENT_BASE}/login`,
+  STUDENT_SIGNUP: `${STUDENT_BASE}/signup`,
+  SUPERADMIN_LOGIN: `${ADMIN_BASE}/login`,
+  LOGIN: `${STUDENT_BASE}/login`,
+  FORGOT_PASSWORD: `${STUDENT_BASE}/forgot-password`,
 };
 
 export const SUPERADMIN_NAV = [
@@ -47,7 +62,7 @@ export const SUPERADMIN_NAV = [
 ];
 
 export const STUDENT_NAV = [
-  { label: 'Internships', path: ROUTES.LANDING, icon: 'Briefcase' },
+  { label: 'Internships', path: ROUTES.STUDENT.PORTAL, icon: 'Briefcase' },
   { label: 'Dashboard', path: ROUTES.STUDENT.DASHBOARD, icon: 'LayoutDashboard' },
   { label: 'Tasks', path: ROUTES.STUDENT.TASKS, icon: 'ClipboardList' },
   { label: 'Progress', path: ROUTES.STUDENT.PROGRESS, icon: 'TrendingUp' },
@@ -74,13 +89,13 @@ export const DEMO_USERS = {
 export function getHomePath(role) {
   return role === ROLES.SUPERADMIN
     ? ROUTES.SUPERADMIN.DASHBOARD
-    : ROUTES.LANDING;
+    : ROUTES.STUDENT.PORTAL;
 }
 
 export function getLoginPath(role) {
   return role === ROLES.SUPERADMIN
-    ? ROUTES.SUPERADMIN_LOGIN
-    : ROUTES.STUDENT_LOGIN;
+    ? ROUTES.SUPERADMIN.LOGIN
+    : ROUTES.STUDENT.LOGIN;
 }
 
 export const STATUS_COLORS = {

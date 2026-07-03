@@ -11,7 +11,7 @@ const iconMap = {
   LayoutDashboard, Users, ClipboardList, BarChart3, Settings, TrendingUp, Briefcase, Award,
 };
 
-const DASHBOARD_PATHS = [ROUTES.SUPERADMIN.DASHBOARD, ROUTES.STUDENT.DASHBOARD, ROUTES.LANDING];
+const DASHBOARD_PATHS = [ROUTES.SUPERADMIN.DASHBOARD, ROUTES.STUDENT.DASHBOARD, ROUTES.STUDENT.PORTAL];
 
 export default function Sidebar({ items, showAddButton = true, isOpen, onClose }) {
   const location = useLocation();
@@ -19,14 +19,14 @@ export default function Sidebar({ items, showAddButton = true, isOpen, onClose }
   const { logout, isSuperadmin, user } = useAuth();
 
   const isActive = (path) => {
-    if (path === ROUTES.LANDING) return location.pathname === ROUTES.LANDING;
+    if (path === ROUTES.STUDENT.PORTAL) return location.pathname === ROUTES.STUDENT.PORTAL;
     if (DASHBOARD_PATHS.includes(path)) return location.pathname === path;
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
-  const handleLogout = () => {
-    const loginPath = user ? getLoginPath(user.role) : ROUTES.STUDENT_LOGIN;
-    logout();
+  const handleLogout = async () => {
+    const loginPath = user ? getLoginPath(user.role) : ROUTES.STUDENT.LOGIN;
+    await logout();
     onClose?.();
     navigate(loginPath);
   };

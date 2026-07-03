@@ -13,8 +13,8 @@ export default function SuperadminLogin() {
   const { login } = useAuth();
   const { register, handleSubmit, formState: { errors } } = useForm();
 
-  const onSubmit = (data) => {
-    const result = login(data.email, data.password, ROLES.SUPERADMIN);
+  const onSubmit = async (data) => {
+    const result = await login(data.email, data.password, ROLES.SUPERADMIN);
     if (!result.success) {
       toast.error(result.error);
       return;
@@ -28,8 +28,8 @@ export default function SuperadminLogin() {
       variant="superadmin"
       title="Superadmin Portal"
       subtitle="Authorized personnel only. Enter your credentials to access the administration dashboard."
-      backLink={ROUTES.LANDING}
-      backLabel="Exit to website"
+      backLink={ROUTES.STUDENT.PORTAL}
+      backLabel="Back to Internship Portal"
       features={[
         'Manage intern cohorts & assignments',
         'Analytics, reports & performance tracking',

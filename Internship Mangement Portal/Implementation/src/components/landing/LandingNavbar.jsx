@@ -4,12 +4,27 @@ import { GraduationCap, ChevronDown, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LANDING_NAV } from '../../constants/landingData';
 import { ROUTES } from '../../constants';
-import { useAuth } from '../../context/AuthContext';
+
+function NavItem({ item, onClick }) {
+  const className = 'flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors';
+  if (item.href.startsWith('/')) {
+    return (
+      <Link to={item.href} onClick={onClick} className={className}>
+        {item.label}
+        {item.hasDropdown && <ChevronDown className="w-3.5 h-3.5" />}
+      </Link>
+    );
+  }
+  return (
+    <a href={item.href} onClick={onClick} className={className}>
+      {item.label}
+      {item.hasDropdown && <ChevronDown className="w-3.5 h-3.5" />}
+    </a>
+  );
+}
 
 export default function LandingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { isAuthenticated, isStudent, user } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-100/80 shadow-sm">
@@ -26,42 +41,21 @@ export default function LandingNavbar() {
 
           <nav className="hidden lg:flex items-center gap-8">
             {LANDING_NAV.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors"
-              >
-                {item.label}
-                {item.hasDropdown && <ChevronDown className="w-3.5 h-3.5" />}
-              </a>
+              <NavItem key={item.label} item={item} />
             ))}
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
-            <a
-              href="#internships"
+            <Link
+              to={ROUTES.STUDENT.PORTAL}
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               Internship Portal
-            </a>
-            {isAuthenticated && isStudent ? (
-              <button
-                onClick={() => navigate(ROUTES.STUDENT.DASHBOARD)}
-                className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Hi, {user?.name?.split(' ')[0]}
-              </button>
-            ) : !isAuthenticated ? (
-              <Link
-                to={ROUTES.STUDENT_LOGIN}
-                className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Sign In
-              </Link>
-            ) : null}
+            </Link>
           </div>
 
           <button
+            type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
             aria-label="Toggle menu"
@@ -81,39 +75,18 @@ export default function LandingNavbar() {
           >
             <div className="px-4 py-4 space-y-1">
               {LANDING_NAV.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
-                >
-                  {item.label}
-                </a>
+                <div key={item.label} className="px-3 py-2.5">
+                  <NavItem item={item} onClick={() => setMobileOpen(false)} />
+                </div>
               ))}
-              <div className="pt-3 flex flex-col gap-2">
-                <a
-                  href="#internships"
+              <div className="pt-3">
+                <Link
+                  to={ROUTES.STUDENT.PORTAL}
                   onClick={() => setMobileOpen(false)}
-                  className="text-center px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
+                  className="block text-center px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
                 >
                   Internship Portal
-                </a>
-                {isAuthenticated && isStudent ? (
-                  <button
-                    onClick={() => { navigate(ROUTES.STUDENT.DASHBOARD); setMobileOpen(false); }}
-                    className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg"
-                  >
-                    My Dashboard
-                  </button>
-                ) : !isAuthenticated ? (
-                  <Link
-                    to={ROUTES.STUDENT_LOGIN}
-                    onClick={() => setMobileOpen(false)}
-                    className="text-center px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg"
-                  >
-                    Sign In
-                  </Link>
-                ) : null}
+                </Link>
               </div>
             </div>
           </motion.div>

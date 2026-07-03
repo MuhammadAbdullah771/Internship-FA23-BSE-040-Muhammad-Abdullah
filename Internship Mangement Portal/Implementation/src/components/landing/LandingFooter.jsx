@@ -9,9 +9,9 @@ const footerLinks = {
     { label: 'Resources', href: '#resources' },
   ],
   Account: [
-    { label: 'Sign In', to: ROUTES.STUDENT_LOGIN },
-    { label: 'Create Account', to: ROUTES.STUDENT_SIGNUP },
-    { label: 'Internship Portal', href: '#internships' },
+    { label: 'Sign In', to: ROUTES.STUDENT.LOGIN },
+    { label: 'Create Account', to: ROUTES.STUDENT.SIGNUP },
+    { label: 'Internship Portal', to: ROUTES.STUDENT.PORTAL },
   ],
 };
 

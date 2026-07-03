@@ -14,8 +14,8 @@ export default function StudentSignup() {
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
   const password = watch('password');
 
-  const onSubmit = (data) => {
-    const result = signup({
+  const onSubmit = async (data) => {
+    const result = await signup({
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
@@ -126,7 +126,7 @@ export default function StudentSignup() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Already have an account?{' '}
-        <Link to={ROUTES.STUDENT_LOGIN} className="font-semibold text-emerald-600 hover:text-emerald-500">
+        <Link to={ROUTES.STUDENT.LOGIN} className="font-semibold text-emerald-600 hover:text-emerald-500">
           Sign in
         </Link>
       </p>

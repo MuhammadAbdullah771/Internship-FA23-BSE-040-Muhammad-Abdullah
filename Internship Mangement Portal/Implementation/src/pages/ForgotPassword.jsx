@@ -6,12 +6,18 @@ import AuthLayout from '../components/auth/AuthLayout';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { ROUTES } from '../constants';
+import { requestPasswordReset } from '../services/authService';
 
 export default function ForgotPassword() {
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
 
-  const onSubmit = () => {
-    toast.success('Reset link sent to your email');
+  const onSubmit = async ({ email }) => {
+    const result = await requestPasswordReset(email);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(result.message);
   };
 
   return (
@@ -21,7 +27,7 @@ export default function ForgotPassword() {
       subtitle="Enter your email address and we'll send you a link to reset your password."
       features={[
         'Secure password recovery',
-        'Link expires in 24 hours',
+        'Link expires in 1 hour',
         'Contact support if you need help',
       ]}
     >
@@ -31,16 +37,20 @@ export default function ForgotPassword() {
           icon={Mail}
           type="email"
           placeholder="you@university.edu"
-          {...register('email', { required: true })}
+          error={errors.email?.message}
+          {...register('email', {
+            required: 'Email is required',
+            pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email' },
+          })}
         />
-        <Button type="submit" className="w-full" size="lg">
-          Send Reset Link
+        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+          {isSubmitting ? 'Sending...' : 'Send Reset Link'}
         </Button>
       </form>
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Remember your password?{' '}
-        <Link to={ROUTES.STUDENT_LOGIN} className="font-semibold text-emerald-600 hover:text-emerald-500">
+        <Link to={ROUTES.STUDENT.LOGIN} className="font-semibold text-emerald-600 hover:text-emerald-500">
           Sign in
         </Link>
       </p>

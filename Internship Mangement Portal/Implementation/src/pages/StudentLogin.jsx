@@ -15,8 +15,8 @@ export default function StudentLogin() {
     defaultValues: { email: 'alex.mercer@example.com' },
   });
 
-  const onSubmit = (data) => {
-    const result = login(data.email, data.password, ROLES.STUDENT);
+  const onSubmit = async (data) => {
+    const result = await login(data.email, data.password, ROLES.STUDENT);
     if (!result.success) {
       toast.error(result.error);
       return;
@@ -88,7 +88,7 @@ export default function StudentLogin() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Don&apos;t have an account?{' '}
-        <Link to={ROUTES.STUDENT_SIGNUP} className="font-semibold text-emerald-600 hover:text-emerald-500">
+        <Link to={ROUTES.STUDENT.SIGNUP} className="font-semibold text-emerald-600 hover:text-emerald-500">
           Sign up
         </Link>
       </p>

@@ -115,14 +115,14 @@ export default function InternshipPostings() {
             <p className="text-gray-500">Ready to start your internship journey?</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to={ROUTES.STUDENT_SIGNUP}
+                to={ROUTES.STUDENT.SIGNUP}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors"
               >
                 Create Free Account
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to={ROUTES.STUDENT_LOGIN}
+                to={ROUTES.STUDENT.LOGIN}
                 className="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Sign In to Apply

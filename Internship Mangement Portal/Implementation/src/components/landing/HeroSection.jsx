@@ -29,15 +29,15 @@ export default function HeroSection() {
               internship platform. Your dream tech career begins here.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <a
-                href="#internships"
+              <Link
+                to={ROUTES.STUDENT.PORTAL}
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/25 transition-all hover:shadow-emerald-600/40"
               >
                 Browse Internships
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
               <Link
-                to={ROUTES.STUDENT_SIGNUP}
+                to={ROUTES.STUDENT.SIGNUP}
                 className="inline-flex items-center justify-center px-7 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-white hover:border-emerald-200 hover:text-emerald-700 transition-colors"
               >
                 Get Started Free

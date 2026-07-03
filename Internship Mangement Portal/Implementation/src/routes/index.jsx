@@ -2,9 +2,11 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ROLES, ROUTES } from '../constants';
 import DashboardLayout from '../layouts/DashboardLayout';
 import LandingLayout from '../layouts/LandingLayout';
+import StudentPortalLayout from '../layouts/StudentPortalLayout';
 import { ProtectedRoute, PublicRoute } from '../components/common/ProtectedRoute';
 
 import Landing from '../pages/Landing';
+import InternshipPortal from '../pages/InternshipPortal';
 import StudentLogin from '../pages/StudentLogin';
 import StudentSignup from '../pages/StudentSignup';
 import SuperadminLogin from '../pages/SuperadminLogin';
@@ -26,34 +28,30 @@ import Settings from '../pages/Settings';
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public marketing website */}
       <Route element={<LandingLayout />}>
         <Route path={ROUTES.LANDING} element={<Landing />} />
       </Route>
 
+      {/* Student internship portal — browse & apply */}
+      <Route element={<StudentPortalLayout />}>
+        <Route path={ROUTES.STUDENT.PORTAL} element={<InternshipPortal />} />
+      </Route>
+
+      {/* Student auth (standalone pages) */}
       <Route element={<PublicRoute />}>
-        <Route path={ROUTES.STUDENT_LOGIN} element={<StudentLogin />} />
-        <Route path={ROUTES.STUDENT_SIGNUP} element={<StudentSignup />} />
-        <Route path={ROUTES.SUPERADMIN_LOGIN} element={<SuperadminLogin />} />
-        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+        <Route path={ROUTES.STUDENT.LOGIN} element={<StudentLogin />} />
+        <Route path={ROUTES.STUDENT.SIGNUP} element={<StudentSignup />} />
+        <Route path={ROUTES.STUDENT.FORGOT_PASSWORD} element={<ForgotPassword />} />
       </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.SUPERADMIN]} loginPath={ROUTES.SUPERADMIN_LOGIN} />}>
-        <Route element={<DashboardLayout />}>
-          <Route path={ROUTES.SUPERADMIN.DASHBOARD} element={<AdminDashboard />} />
-          <Route path={ROUTES.SUPERADMIN.INTERNS} element={<InternManagement />} />
-          <Route path={ROUTES.SUPERADMIN.TASKS} element={<TaskManagement />} />
-          <Route path={ROUTES.SUPERADMIN.TASK_SUBMIT} element={<TaskSubmission />} />
-          <Route path={`${ROUTES.SUPERADMIN.TASKS}/:id`} element={<TaskDetails />} />
-          <Route path={ROUTES.SUPERADMIN.PROGRESS} element={<ProgressTracking />} />
-          <Route path={ROUTES.SUPERADMIN.REPORTS} element={<Reports />} />
-          <Route path={ROUTES.SUPERADMIN.FEEDBACK} element={<Feedback />} />
-          <Route path={ROUTES.SUPERADMIN.NOTIFICATIONS} element={<Notifications />} />
-          <Route path={ROUTES.SUPERADMIN.PROFILE} element={<UserProfile />} />
-          <Route path={ROUTES.SUPERADMIN.SETTINGS} element={<Settings />} />
-        </Route>
+      {/* Superadmin auth (standalone — not linked from public site) */}
+      <Route element={<PublicRoute />}>
+        <Route path={ROUTES.SUPERADMIN.LOGIN} element={<SuperadminLogin />} />
       </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]} loginPath={ROUTES.STUDENT_LOGIN} />}>
+      {/* Student dashboard & tools */}
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]} loginPath={ROUTES.STUDENT.LOGIN} />}>
         <Route element={<DashboardLayout />}>
           <Route path={ROUTES.STUDENT.DASHBOARD} element={<InternDashboard />} />
           <Route path={ROUTES.STUDENT.TASKS} element={<TaskManagement />} />
@@ -69,9 +67,32 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      <Route path="/login" element={<Navigate to={ROUTES.STUDENT_LOGIN} replace />} />
+      {/* Superadmin control panel */}
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.SUPERADMIN]} loginPath={ROUTES.SUPERADMIN.LOGIN} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path={ROUTES.SUPERADMIN.DASHBOARD} element={<AdminDashboard />} />
+          <Route path={ROUTES.SUPERADMIN.INTERNS} element={<InternManagement />} />
+          <Route path={ROUTES.SUPERADMIN.TASKS} element={<TaskManagement />} />
+          <Route path={ROUTES.SUPERADMIN.TASK_SUBMIT} element={<TaskSubmission />} />
+          <Route path={`${ROUTES.SUPERADMIN.TASKS}/:id`} element={<TaskDetails />} />
+          <Route path={ROUTES.SUPERADMIN.PROGRESS} element={<ProgressTracking />} />
+          <Route path={ROUTES.SUPERADMIN.REPORTS} element={<Reports />} />
+          <Route path={ROUTES.SUPERADMIN.FEEDBACK} element={<Feedback />} />
+          <Route path={ROUTES.SUPERADMIN.NOTIFICATIONS} element={<Notifications />} />
+          <Route path={ROUTES.SUPERADMIN.PROFILE} element={<UserProfile />} />
+          <Route path={ROUTES.SUPERADMIN.SETTINGS} element={<Settings />} />
+        </Route>
+      </Route>
+
+      {/* Legacy URL redirects */}
+      <Route path="/login" element={<Navigate to={ROUTES.STUDENT.LOGIN} replace />} />
+      <Route path="/signup" element={<Navigate to={ROUTES.STUDENT.SIGNUP} replace />} />
+      <Route path="/forgot-password" element={<Navigate to={ROUTES.STUDENT.FORGOT_PASSWORD} replace />} />
+      <Route path="/internships" element={<Navigate to={ROUTES.STUDENT.PORTAL} replace />} />
       <Route path="/admin" element={<Navigate to={ROUTES.SUPERADMIN.DASHBOARD} replace />} />
       <Route path="/dashboard" element={<Navigate to={ROUTES.STUDENT.DASHBOARD} replace />} />
+      <Route path="/student/*" element={<Navigate to={ROUTES.STUDENT.PORTAL} replace />} />
+
       <Route path="*" element={<Navigate to={ROUTES.LANDING} replace />} />
     </Routes>
   );
