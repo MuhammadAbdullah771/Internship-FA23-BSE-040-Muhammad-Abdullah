@@ -21,7 +21,7 @@ export default function InternshipPortalContent() {
 
   const handleApply = async (posting) => {
     if (!isAuthenticated || !isStudent) {
-      toast('Please sign in using the form on the left to apply', { icon: '🔒' });
+      toast('Please sign in to apply for internships', { icon: '🔒' });
       return;
     }
     const result = await applyToInternship(posting.id);
@@ -42,7 +42,7 @@ export default function InternshipPortalContent() {
           Find Your <span className="text-emerald-600">Dream Internship</span>
         </h1>
         <p className="mt-3 text-gray-500 max-w-xl mx-auto">
-          Sign in on the left, then apply to any track below. Your application is saved to your account instantly.
+          Sign in on the left with Google or email, then apply to any track below.
         </p>
       </div>
 

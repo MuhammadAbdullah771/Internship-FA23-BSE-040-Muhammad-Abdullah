@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { ROLE_VALUES } from '../constants/roles.js';
+import portalAccessSchema from './portalAccess.schema.js';
 
 const SALT_ROUNDS = 12;
 
@@ -14,10 +15,18 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    clerkId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     passwordHash: {
       type: String,
-      required: true,
       select: false,
+      required() {
+        return !this.clerkId;
+      },
     },
     firstName: {
       type: String,
@@ -41,6 +50,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    portalAccess: {
+      type: portalAccessSchema,
+      default: () => ({}),
+    },
   },
   {
     timestamps: true,
@@ -62,7 +75,7 @@ userSchema.statics.hashPassword = function hashPassword(plainPassword) {
 };
 
 userSchema.pre('save', async function hashOnSave(next) {
-  if (!this.isModified('passwordHash')) {
+  if (!this.isModified('passwordHash') || !this.passwordHash) {
     return next();
   }
   if (this.passwordHash.startsWith('$2')) {

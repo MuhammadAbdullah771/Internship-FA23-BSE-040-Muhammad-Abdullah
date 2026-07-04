@@ -7,7 +7,7 @@ import {
   internIdParamSchema,
 } from './interns.validation.js';
 import { validate } from '../../middleware/validate.js';
-import { authenticate, authorize } from '../../middleware/auth.js';
+import { authenticate, authorize } from '../../middleware/authenticate.js';
 import { ROLES } from '../../constants/roles.js';
 
 const router = Router();

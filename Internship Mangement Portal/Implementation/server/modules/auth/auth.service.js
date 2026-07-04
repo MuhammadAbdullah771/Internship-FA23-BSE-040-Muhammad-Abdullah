@@ -15,6 +15,31 @@ function buildAvatar(email) {
   return `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`;
 }
 
+export async function syncClerkUser({ clerkId, email, firstName, lastName, imageUrl }) {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  let user = await User.findOne({ clerkId });
+  if (user) return user;
+
+  user = await User.findOne({ email: normalizedEmail });
+  if (user) {
+    user.clerkId = clerkId;
+    if (imageUrl && !user.avatar) user.avatar = imageUrl;
+    await user.save();
+    return user;
+  }
+
+  return User.create({
+    clerkId,
+    email: normalizedEmail,
+    firstName: firstName?.trim() || 'Student',
+    lastName: lastName?.trim() || '',
+    role: ROLES.STUDENT,
+    avatar: imageUrl || buildAvatar(normalizedEmail),
+    portalAccess: { status: 'unsubmitted' },
+  });
+}
+
 function parseDurationToMs(duration) {
   const match = /^(\d+)([smhd])$/.exec(duration);
   if (!match) return REFRESH_TTL_MS;

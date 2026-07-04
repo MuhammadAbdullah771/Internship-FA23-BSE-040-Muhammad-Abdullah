@@ -3,6 +3,13 @@ export const ROLES = {
   STUDENT: 'student',
 };
 
+export const PORTAL_ACCESS_STATUS = {
+  UNSUBMITTED: 'unsubmitted',
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+};
+
 const STUDENT_BASE = '/portal/student';
 const ADMIN_BASE = '/portal/superadmin';
 
@@ -15,6 +22,8 @@ export const ROUTES = {
     LOGIN: `${STUDENT_BASE}/login`,
     SIGNUP: `${STUDENT_BASE}/signup`,
     FORGOT_PASSWORD: `${STUDENT_BASE}/forgot-password`,
+    ONBOARDING: `${STUDENT_BASE}/onboarding`,
+    PENDING_APPROVAL: `${STUDENT_BASE}/pending-approval`,
     DASHBOARD: `${STUDENT_BASE}/dashboard`,
     TASKS: `${STUDENT_BASE}/tasks`,
     taskDetail: (id) => `${STUDENT_BASE}/tasks/${id}`,
@@ -42,6 +51,7 @@ export const ROUTES = {
     NOTIFICATIONS: `${ADMIN_BASE}/notifications`,
     PROFILE: `${ADMIN_BASE}/profile`,
     SETTINGS: `${ADMIN_BASE}/settings`,
+    APPROVALS: `${ADMIN_BASE}/approvals`,
   },
 
   // Aliases (backward compatibility)
@@ -56,6 +66,7 @@ export const ROUTES = {
 export const SUPERADMIN_NAV = [
   { label: 'Dashboard', path: ROUTES.SUPERADMIN.DASHBOARD, icon: 'LayoutDashboard' },
   { label: 'Interns', path: ROUTES.SUPERADMIN.INTERNS, icon: 'Users' },
+  { label: 'Approvals', path: ROUTES.SUPERADMIN.APPROVALS, icon: 'UserCheck' },
   { label: 'Tasks', path: ROUTES.SUPERADMIN.TASKS, icon: 'ClipboardList' },
   { label: 'Reports', path: ROUTES.SUPERADMIN.REPORTS, icon: 'BarChart3' },
   { label: 'Settings', path: ROUTES.SUPERADMIN.SETTINGS, icon: 'Settings' },
@@ -71,25 +82,30 @@ export const STUDENT_NAV = [
   { label: 'Settings', path: ROUTES.STUDENT.SETTINGS, icon: 'Settings' },
 ];
 
-export const DEMO_USERS = {
-  'superadmin@internhub.io': {
-    password: 'superadmin123',
-    role: ROLES.SUPERADMIN,
-    name: 'Super Admin',
-    avatar: 'https://i.pravatar.cc/150?u=superadmin',
-  },
-  'alex.mercer@example.com': {
-    password: 'student123',
-    role: ROLES.STUDENT,
-    name: 'Alex Mercer',
-    avatar: 'https://i.pravatar.cc/150?u=alex',
-  },
-};
-
 export function getHomePath(role) {
   return role === ROLES.SUPERADMIN
     ? ROUTES.SUPERADMIN.DASHBOARD
     : ROUTES.STUDENT.PORTAL;
+}
+
+export function getStudentAccessPath(user) {
+  if (!user || user.role !== ROLES.STUDENT) return ROUTES.STUDENT.PORTAL;
+
+  switch (user.portalAccessStatus) {
+    case PORTAL_ACCESS_STATUS.APPROVED:
+      return ROUTES.STUDENT.PORTAL;
+    case PORTAL_ACCESS_STATUS.PENDING:
+      return ROUTES.STUDENT.PENDING_APPROVAL;
+    case PORTAL_ACCESS_STATUS.REJECTED:
+    case PORTAL_ACCESS_STATUS.UNSUBMITTED:
+    default:
+      return ROUTES.STUDENT.ONBOARDING;
+  }
+}
+
+export function isStudentPortalApproved(user) {
+  return user?.role === ROLES.STUDENT
+    && user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED;
 }
 
 export function getLoginPath(role) {

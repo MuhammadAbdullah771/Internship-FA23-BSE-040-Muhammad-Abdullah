@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { SignedIn, UserButton } from '@clerk/clerk-react';
 import { GraduationCap, ChevronDown, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LANDING_NAV } from '../../constants/landingData';
 import { ROUTES } from '../../constants';
+import { clerkAppearance } from '../../config/clerk';
 
 function NavItem({ item, onClick }) {
   const className = 'flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors';
@@ -47,11 +49,14 @@ export default function LandingNavbar() {
 
           <div className="hidden lg:flex items-center gap-3">
             <Link
-              to={ROUTES.STUDENT.PORTAL}
+              to={ROUTES.STUDENT.LOGIN}
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               Internship Portal
             </Link>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" appearance={clerkAppearance} />
+            </SignedIn>
           </div>
 
           <button
@@ -79,9 +84,9 @@ export default function LandingNavbar() {
                   <NavItem item={item} onClick={() => setMobileOpen(false)} />
                 </div>
               ))}
-              <div className="pt-3">
+              <div className="pt-3 px-3">
                 <Link
-                  to={ROUTES.STUDENT.PORTAL}
+                  to={ROUTES.STUDENT.LOGIN}
                   onClick={() => setMobileOpen(false)}
                   className="block text-center px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg"
                 >

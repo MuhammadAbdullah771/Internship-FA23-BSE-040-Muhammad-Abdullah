@@ -9,6 +9,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import internRoutes from './modules/interns/interns.routes.js';
 import taskRoutes from './modules/tasks/tasks.routes.js';
 import internshipRoutes from './modules/internships/internships.routes.js';
+import portalAccessRoutes from './modules/portal-access/portal-access.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 export function createApp() {
@@ -22,7 +23,7 @@ export function createApp() {
     app.use(cors({ origin: env.corsOrigin, credentials: true }));
   }
 
-  app.use(express.json({ limit: '10kb' }));
+  app.use(express.json({ limit: '6mb' }));
   app.use(morgan(env.isDev ? 'dev' : 'combined'));
 
   app.get('/api/health', (_req, res) => {
@@ -38,6 +39,8 @@ export function createApp() {
   app.use('/api/interns', internRoutes);
   app.use('/api/tasks', taskRoutes);
   app.use('/api/internships', internshipRoutes);
+  app.use('/api/portal-access', portalAccessRoutes);
+  app.use('/uploads', express.static(path.join(env.rootDir, 'server/uploads')));
 
   if (env.isProd) {
     const distPath = path.join(env.rootDir, 'dist');

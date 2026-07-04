@@ -37,10 +37,10 @@ export default function HeroSection() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to={ROUTES.STUDENT.SIGNUP}
+                to={ROUTES.STUDENT.LOGIN}
                 className="inline-flex items-center justify-center px-7 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-white hover:border-emerald-200 hover:text-emerald-700 transition-colors"
               >
-                Get Started Free
+                Join Internship Portal
               </Link>
             </div>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 sm:gap-8">

@@ -1,6 +1,12 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getHomePath, ROUTES } from '../../constants';
+import {
+  getHomePath,
+  getStudentAccessPath,
+  isStudentPortalApproved,
+  ROUTES,
+  ROLES,
+} from '../../constants';
 
 function AuthLoadingScreen() {
   return (
@@ -13,7 +19,11 @@ function AuthLoadingScreen() {
   );
 }
 
-export function ProtectedRoute({ allowedRoles, loginPath = ROUTES.STUDENT.LOGIN }) {
+export function ProtectedRoute({
+  allowedRoles,
+  loginPath = ROUTES.STUDENT.LOGIN,
+  requirePortalApproval = false,
+}) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
@@ -27,6 +37,27 @@ export function ProtectedRoute({ allowedRoles, loginPath = ROUTES.STUDENT.LOGIN 
     return <Navigate to={getHomePath(user.role)} replace />;
   }
 
+  if (requirePortalApproval && user.role === ROLES.STUDENT && !isStudentPortalApproved(user)) {
+    return <Navigate to={getStudentAccessPath(user)} replace />;
+  }
+
+  return <Outlet />;
+}
+
+export function StudentAccessRoute({ allowedStatuses }) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <AuthLoadingScreen />;
+
+  if (!isAuthenticated || user.role !== ROLES.STUDENT) {
+    return <Navigate to={ROUTES.STUDENT.LOGIN} state={{ from: location }} replace />;
+  }
+
+  if (!allowedStatuses.includes(user.portalAccessStatus)) {
+    return <Navigate to={getStudentAccessPath(user)} replace />;
+  }
+
   return <Outlet />;
 }
 
@@ -36,7 +67,10 @@ export function PublicRoute({ redirectIfAuth = true }) {
   if (isLoading) return <AuthLoadingScreen />;
 
   if (redirectIfAuth && isAuthenticated) {
-    return <Navigate to={getHomePath(user.role)} replace />;
+    const target = user.role === ROLES.STUDENT
+      ? getStudentAccessPath(user)
+      : getHomePath(user.role);
+    return <Navigate to={target} replace />;
   }
 
   return <Outlet />;

@@ -16,6 +16,7 @@ const SEED_USERS = [
     lastName: 'Admin',
     role: ROLES.SUPERADMIN,
     avatar: 'https://i.pravatar.cc/150?u=superadmin',
+    portalAccess: { status: 'approved' },
   },
   {
     email: 'alex.mercer@example.com',
@@ -24,6 +25,7 @@ const SEED_USERS = [
     lastName: 'Mercer',
     role: ROLES.STUDENT,
     avatar: 'https://i.pravatar.cc/150?u=alex',
+    portalAccess: { status: 'approved' },
   },
 ];
 

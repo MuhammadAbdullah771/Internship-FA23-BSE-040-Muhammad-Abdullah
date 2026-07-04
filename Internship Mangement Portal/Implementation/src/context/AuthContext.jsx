@@ -1,85 +1,78 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { ROLES, getHomePath } from '../constants';
-import {
-  loginUser,
-  registerStudent,
-  fetchCurrentUser,
-  refreshSession,
-  logoutUser,
-} from '../services/authService';
-import { hasStoredSession } from '../services/tokenStorage';
+import { useUser, useAuth as useClerkAuth, useClerk } from '@clerk/clerk-react';
+import { ROLES } from '../constants';
+import { fetchCurrentUser } from '../services/authService';
+import { setClerkTokenGetter } from '../services/api';
 
 const AuthContext = createContext(null);
 
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+}
+
 export function AuthProvider({ children }) {
+  const { isLoaded: clerkLoaded, isSignedIn, getToken } = useClerkAuth();
+  const { user: clerkUser } = useUser();
+  const { signOut } = useClerk();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setClerkTokenGetter(() => getToken());
+  }, [getToken]);
+
+  useEffect(() => {
     let cancelled = false;
 
-    async function restoreSession() {
-      if (!hasStoredSession()) {
+    async function loadAppUser() {
+      if (!clerkLoaded) return;
+
+      if (!isSignedIn) {
+        setUser(null);
         setIsLoading(false);
         return;
       }
 
+      setIsLoading(true);
       try {
-        const currentUser = await fetchCurrentUser();
-        if (!cancelled) setUser(currentUser);
+        const appUser = await fetchCurrentUser();
+        if (!cancelled) setUser(appUser);
       } catch {
-        try {
-          const currentUser = await refreshSession();
-          if (!cancelled) setUser(currentUser);
-        } catch {
-          if (!cancelled) setUser(null);
+        if (!cancelled) {
+          setUser(null);
+          await signOut();
         }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     }
 
-    restoreSession();
+    loadAppUser();
     return () => { cancelled = true; };
-  }, []);
-
-  const login = useCallback(async (email, password, expectedRole) => {
-    const result = await loginUser({ email, password, expectedRole });
-    if (!result.success) return result;
-
-    setUser(result.user);
-    return { success: true, redirect: getHomePath(result.user.role) };
-  }, []);
-
-  const signup = useCallback(async ({ firstName, lastName, email, password }) => {
-    const result = await registerStudent({ firstName, lastName, email, password });
-    if (!result.success) return result;
-
-    setUser(result.user);
-    return { success: true, redirect: getHomePath(ROLES.STUDENT) };
-  }, []);
+  }, [clerkLoaded, isSignedIn, clerkUser?.id, signOut]);
 
   const logout = useCallback(async () => {
-    await logoutUser();
+    await signOut();
     setUser(null);
-  }, []);
+  }, [signOut]);
+
+  const refreshUser = useCallback(async () => {
+    if (!isSignedIn) return;
+    const appUser = await fetchCurrentUser();
+    setUser(appUser);
+  }, [isSignedIn]);
 
   const value = {
     user,
-    isLoading,
-    isAuthenticated: Boolean(user),
+    isLoading: !clerkLoaded || isLoading,
+    isAuthenticated: Boolean(isSignedIn && user),
     isSuperadmin: user?.role === ROLES.SUPERADMIN,
     isStudent: user?.role === ROLES.STUDENT,
-    login,
-    signup,
     logout,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
 }

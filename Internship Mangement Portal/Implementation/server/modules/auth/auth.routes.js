@@ -9,7 +9,7 @@ import {
   resetPasswordSchema,
 } from './auth.validation.js';
 import { validate } from '../../middleware/validate.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, authorize } from '../../middleware/authenticate.js';
 
 const router = Router();
 

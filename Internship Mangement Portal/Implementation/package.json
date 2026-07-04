@@ -13,9 +13,15 @@
     "start": "cross-env NODE_ENV=production node server/server.js",
     "stop": "npx kill-port 5000",
     "preview": "npm run build && npm run start",
-    "seed": "node server/scripts/seed.js"
+    "seed": "node server/scripts/seed.js",
+    "clerk:login": "clerk auth login",
+    "clerk:init": "clerk init --app app_3G2KA7NKNZVgnZ33iYRugmANmnQ -y",
+    "clerk:env": "clerk env pull",
+    "clerk:doctor": "clerk doctor"
   },
   "dependencies": {
+    "@clerk/backend": "^3.10.0",
+    "@clerk/clerk-react": "^5.61.8",
     "axios": "^1.7.9",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -43,6 +49,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
+    "clerk": "^1.5.0",
     "kill-port": "^2.0.1",
     "tailwindcss": "^4.0.0",
     "vite": "^6.0.5"
