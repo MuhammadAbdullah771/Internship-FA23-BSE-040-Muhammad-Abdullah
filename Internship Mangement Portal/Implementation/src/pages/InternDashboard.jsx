@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -12,27 +12,49 @@ import Button from '../components/ui/Button';
 import DonutChart from '../components/charts/DonutChart';
 import Avatar from '../components/ui/Avatar';
 import DashboardStatCard from '../components/student/DashboardStatCard';
-import TaskTrackTimeline from '../components/student/TaskTrackTimeline';
 import CertificatePanel from '../components/student/CertificatePanel';
-import {
-  studentStats, internshipTrack, taskTracks, trackTasks, certificationData,
-} from '../constants/studentData';
 import { useAuth } from '../context/AuthContext';
 import { useAppPaths } from '../hooks/useAppPaths';
-import { ROUTES } from '../constants';
+import { fetchStudentDashboard } from '../services/studentService';
+
 const statIcons = { CheckCircle, TrendingUp, Clock, Star };
 
 const taskStatusVariant = {
-  completed: 'success',
+  done: 'success',
   in_progress: 'primary',
-  pending: 'default',
+  todo: 'default',
+  review: 'warning',
 };
 
 const taskStatusLabel = {
-  completed: 'Done',
+  done: 'Done',
   in_progress: 'In Progress',
-  pending: 'Pending',
+  todo: 'To Do',
+  review: 'In Review',
 };
+
+function formatDeadline(dueDate) {
+  if (!dueDate) return 'No due date';
+  const due = new Date(dueDate);
+  const now = new Date();
+  const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Due today';
+  if (diffDays === 1) return 'Due tomorrow';
+  if (diffDays < 0) return 'Overdue';
+  return due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDeadlineBox(dueDate) {
+  if (!dueDate) return { month: '—', day: '—', urgent: false };
+  const due = new Date(dueDate);
+  const now = new Date();
+  const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+  return {
+    month: due.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+    day: due.getDate(),
+    urgent: diffDays <= 1,
+  };
+}
 
 export default function InternDashboard() {
   const { user } = useAuth();
@@ -40,30 +62,79 @@ export default function InternDashboard() {
   const firstName = user?.name?.split(' ')[0] || 'Student';
   const fullName = user?.name || 'Student';
 
-  const [certStatus, setCertStatus] = useState('pending');
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const allTracksComplete = useMemo(
-    () => taskTracks.every((t) => t.status === 'completed'),
-    []
-  );
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchStudentDashboard();
+      setDashboard(data);
+    } catch {
+      toast.error('Failed to load dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const handleRequestVerification = () => {
     toast.success('Verification request sent to your mentor');
-    setCertStatus('pending');
   };
 
   const handleDownload = () => {
-    toast.success('Certificate download started');
+    toast.success('Certificate download will be available once verified');
   };
 
-  const demoVerify = () => {
-    setCertStatus('verified');
-    toast.success('Internship verified! Certificate is now available.');
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const stats = dashboard?.stats || {};
+  const recentTasks = dashboard?.recentTasks || [];
+  const upcomingDeadlines = dashboard?.upcomingDeadlines || [];
+  const progress = stats.progressPercent || 0;
+  const trackTitle = dashboard?.trackTitle || 'Internship';
+  const cohort = dashboard?.cohort || 'Internship Program';
+  const certStatus = dashboard?.certificateStatus || 'locked';
+
+  const studentStats = [
+    { label: 'Tasks Completed', value: String(stats.completed || 0), change: `${stats.total || 0} total`, icon: 'CheckCircle', color: 'emerald' },
+    { label: 'In Progress', value: String(stats.inProgress || 0), change: `${stats.review || 0} in review`, icon: 'TrendingUp', color: 'blue' },
+    { label: 'Pending', value: String(stats.todo || 0), change: 'To do', icon: 'Clock', color: 'amber' },
+    { label: 'Progress', value: `${progress}%`, change: 'Overall completion', icon: 'Star', color: 'purple' },
+  ];
+
+  const certificationData = {
+    program: trackTitle,
+    grade: progress >= 80 ? 'A' : progress >= 60 ? 'B' : 'In Progress',
+    skills: dashboard?.intern?.track ? [dashboard.intern.track] : [trackTitle],
+    completionDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    certificateId: user?.id ? `IH-${user.id.slice(-8).toUpperCase()}` : 'IH-PENDING',
   };
+
+  const internshipTrack = {
+    title: trackTitle,
+    cohort,
+    mentor: 'Your Mentor',
+    progress,
+    startDate: user?.createdAt
+      ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '—',
+    endDate: '—',
+  };
+
+  const firstInProgressTask = recentTasks.find((t) => t.status === 'in_progress') || recentTasks[0];
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="bg-gradient-to-r from-white via-white to-emerald-50/60 relative overflow-hidden border-emerald-100/60">
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
@@ -71,22 +142,28 @@ export default function InternDashboard() {
             <div className="flex items-start gap-4">
               <Avatar src={user?.avatar} name={fullName} size="lg" />
               <div>
-                <p className="text-sm text-emerald-600 font-medium mb-0.5">{internshipTrack.cohort}</p>
+                <p className="text-sm text-emerald-600 font-medium mb-0.5">{cohort}</p>
                 <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
                   Good morning, {firstName}!
                 </h1>
                 <p className="text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
                   <BookOpen className="w-4 h-4" />
-                  {internshipTrack.title} Track
-                  <span className="text-gray-300">|</span>
-                  Mentor: {internshipTrack.mentor}
+                  {trackTitle} Track
+                  {dashboard?.institute && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      {dashboard.institute}
+                    </>
+                  )}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Link to={paths.TASK_SUBMIT}>
-                <Button variant="outline" icon={FileText}>Submit Work</Button>
-              </Link>
+              {firstInProgressTask && (
+                <Link to={paths.taskSubmit(firstInProgressTask.id)}>
+                  <Button variant="outline" icon={FileText}>Submit Work</Button>
+                </Link>
+              )}
               <Link to={paths.TASKS}>
                 <Button variant="purple" icon={Clock}>View Tasks</Button>
               </Link>
@@ -95,7 +172,6 @@ export default function InternDashboard() {
         </Card>
       </motion.div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {studentStats.map((stat, i) => {
           const Icon = statIcons[stat.icon];
@@ -112,23 +188,6 @@ export default function InternDashboard() {
         })}
       </div>
 
-      {/* Task Tracks */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <Card>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Internship Task Tracks</h2>
-              <p className="text-sm text-gray-500">Your learning path from onboarding to certification</p>
-            </div>
-            <Link to={paths.PROGRESS}>
-              <Button variant="purple-light" size="sm" icon={TrendingUp}>Track Progress</Button>
-            </Link>
-          </div>
-          <TaskTrackTimeline tracks={taskTracks} />
-        </Card>
-      </motion.div>
-
-      {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
           className="lg:col-span-2 space-y-6"
@@ -136,58 +195,57 @@ export default function InternDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          {/* Current track tasks */}
           <Card>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Current Track Tasks</h2>
-                <p className="text-xs text-gray-500">Core Project phase</p>
+                <h2 className="text-lg font-semibold text-gray-900">Current Tasks</h2>
+                <p className="text-xs text-gray-500">Your active assignments</p>
               </div>
               <Link to={paths.TASKS} className="text-sm font-medium text-emerald-600 hover:text-emerald-500 flex items-center gap-1">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="space-y-3">
-              {trackTasks.map((task) => (
-                <Link
-                  key={task.id}
-                  to={paths.taskDetail(task.id)}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group"
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    task.status === 'completed' ? 'bg-emerald-100' : task.status === 'in_progress' ? 'bg-emerald-50' : 'bg-gray-100'
-                  }`}>
-                    {task.status === 'completed' ? (
-                      <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    ) : (
-                      <FileText className="w-5 h-5 text-gray-400 group-hover:text-emerald-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">{task.title}</p>
-                    <p className="text-xs text-gray-400">{task.track} &bull; Due {task.due}</p>
-                  </div>
-                  <Badge variant={taskStatusVariant[task.status]}>{taskStatusLabel[task.status]}</Badge>
-                </Link>
-              ))}
-            </div>
+            {recentTasks.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No tasks assigned yet. Check back soon!</p>
+            ) : (
+              <div className="space-y-3">
+                {recentTasks.map((task) => (
+                  <Link
+                    key={task.id}
+                    to={paths.taskDetail(task.id)}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group"
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      task.status === 'done' ? 'bg-emerald-100' : task.status === 'in_progress' ? 'bg-emerald-50' : 'bg-gray-100'
+                    }`}>
+                      {task.status === 'done' ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      ) : (
+                        <FileText className="w-5 h-5 text-gray-400 group-hover:text-emerald-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{task.title}</p>
+                      <p className="text-xs text-gray-400">{formatDeadline(task.dueDate)}</p>
+                    </div>
+                    <Badge variant={taskStatusVariant[task.status] || 'default'}>
+                      {taskStatusLabel[task.status] || task.status}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
           </Card>
 
-          {/* Certification */}
           <Card id="certificate">
             <CertificatePanel
               studentName={fullName}
               certification={certificationData}
               track={internshipTrack}
-              status={certStatus === 'verified' ? 'verified' : certStatus === 'pending' ? 'pending' : allTracksComplete ? 'pending' : 'locked'}
+              status={certStatus}
               onRequestVerification={handleRequestVerification}
               onDownload={handleDownload}
             />
-            {certStatus !== 'verified' && (
-              <p className="text-xs text-gray-400 mt-4 text-center">
-                Demo: <button onClick={demoVerify} className="text-emerald-600 font-medium hover:underline">Simulate verification approval</button>
-              </p>
-            )}
           </Card>
         </motion.div>
 
@@ -199,79 +257,80 @@ export default function InternDashboard() {
         >
           <Card>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Overall Progress</h2>
-            <DonutChart value={internshipTrack.progress} size={200} />
+            <DonutChart value={progress} size={200} />
             <p className="text-center text-sm text-gray-500 mt-2">of internship complete</p>
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Start Date</span>
-                <span className="font-medium text-gray-900">{internshipTrack.startDate}</span>
+                <span className="text-gray-500">Tasks Done</span>
+                <span className="font-medium text-gray-900">{stats.completed || 0} / {stats.total || 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">End Date</span>
-                <span className="font-medium text-gray-900">{internshipTrack.endDate}</span>
+                <span className="text-gray-500">Applications</span>
+                <span className="font-medium text-gray-900">{stats.applicationCount || 0}</span>
               </div>
             </div>
           </Card>
 
           <Card>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Deadlines</h2>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-xl bg-red-50 flex flex-col items-center justify-center shrink-0 border border-red-100">
-                  <span className="text-[10px] font-semibold text-red-400 uppercase">OCT</span>
-                  <span className="text-xl font-bold text-red-600 leading-none">18</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">API Integration Due</p>
-                  <p className="text-sm text-gray-500 mt-0.5">Core Project track task</p>
-                </div>
+            {upcomingDeadlines.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">No upcoming deadlines</p>
+            ) : (
+              <div className="space-y-4">
+                {upcomingDeadlines.slice(0, 3).map((task) => {
+                  const box = formatDeadlineBox(task.dueDate);
+                  return (
+                    <Link
+                      key={task.id}
+                      to={paths.taskDetail(task.id)}
+                      className="flex items-start gap-4 hover:bg-gray-50 -mx-2 px-2 py-1 rounded-lg transition-colors"
+                    >
+                      <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${
+                        box.urgent ? 'bg-red-50 border-red-100' : 'bg-gray-100 border-gray-100'
+                      }`}>
+                        <span className={`text-[10px] font-semibold uppercase ${box.urgent ? 'text-red-400' : 'text-gray-400'}`}>
+                          {box.month}
+                        </span>
+                        <span className={`text-xl font-bold leading-none ${box.urgent ? 'text-red-600' : 'text-gray-900'}`}>
+                          {box.day}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{task.title}</p>
+                        <p className="text-sm text-gray-500 mt-0.5">{formatDeadline(task.dueDate)}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gray-100 flex flex-col items-center justify-center shrink-0">
-                  <span className="text-[10px] font-semibold text-gray-400 uppercase">OCT</span>
-                  <span className="text-xl font-bold text-gray-900 leading-none">25</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">Mid-term Evaluation</p>
-                  <p className="text-sm text-gray-500 mt-0.5">Submit self-reflection to HR</p>
-                </div>
-              </div>
-            </div>
+            )}
           </Card>
 
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Mentor Feedback</h2>
-            <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100/50">
-              <div className="flex items-center gap-3 mb-3">
-                <Avatar src={internshipTrack.mentorAvatar} name={internshipTrack.mentor} size="sm" />
+          <Link to={paths.APPLICATIONS}>
+            <Card className="hover:border-emerald-200 hover:shadow-md transition-all cursor-pointer">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{internshipTrack.mentor}</p>
-                  <p className="text-xs text-gray-400">2 days ago</p>
+                  <p className="font-semibold text-gray-900">My Applications</p>
+                  <p className="text-sm text-gray-500">{stats.applicationCount || 0} application(s)</p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-emerald-600" />
               </div>
-              <p className="text-sm text-gray-600 italic leading-relaxed">
-                &ldquo;{firstName}, great progress on the dashboard project. Focus on API error handling
-                and test coverage for the next submission.&rdquo;
-              </p>
-            </div>
-            <Link to={paths.FEEDBACK} className="block mt-3 text-sm font-medium text-emerald-600 hover:text-emerald-500 text-center">
-              View all feedback
-            </Link>
-          </Card>
+            </Card>
+          </Link>
 
           <Link to={paths.CERTIFICATE}>
             <Card className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white border-0 hover:shadow-premium-lg transition-shadow cursor-pointer">
-            <div className="flex items-center gap-3 mb-3">
-              <Award className="w-8 h-8 opacity-90" />
-              <div>
-                <p className="font-semibold">Earn Your Certificate</p>
-                <p className="text-xs text-emerald-100">Complete all tracks to qualify</p>
+              <div className="flex items-center gap-3 mb-3">
+                <Award className="w-8 h-8 opacity-90" />
+                <div>
+                  <p className="font-semibold">Earn Your Certificate</p>
+                  <p className="text-xs text-emerald-100">Complete all tasks to qualify</p>
+                </div>
               </div>
-            </div>
-            <div className="h-2 bg-white/20 rounded-full overflow-hidden mb-2">
-              <div className="h-full bg-white rounded-full" style={{ width: `${internshipTrack.progress}%` }} />
-            </div>
-            <p className="text-xs text-emerald-100">{internshipTrack.progress}% complete — keep going!</p>
+              <div className="h-2 bg-white/20 rounded-full overflow-hidden mb-2">
+                <div className="h-full bg-white rounded-full" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="text-xs text-emerald-100">{progress}% complete — keep going!</p>
             </Card>
           </Link>
         </motion.div>

@@ -1,14 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Upload, Briefcase } from 'lucide-react';
+import {
+  Upload, Briefcase, User, Building2, Phone, FileText, CreditCard,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
 import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import { fetchInternshipPostings } from '../services/internshipService';
 import { submitPortalAccess } from '../services/portalAccessService';
 import { useAuth } from '../context/AuthContext';
 import { PORTAL_ACCESS_STATUS, ROUTES } from '../constants';
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function StudentOnboarding() {
   const navigate = useNavigate();
@@ -16,30 +28,56 @@ export default function StudentOnboarding() {
   const [postings, setPostings] = useState([]);
   const [screenshotPreview, setScreenshotPreview] = useState('');
   const [screenshotData, setScreenshotData] = useState('');
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
+  const [cvFileName, setCvFileName] = useState('');
+  const [cvData, setCvData] = useState('');
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: {
+      fullName: user?.name || '',
+    },
+  });
 
   useEffect(() => {
     fetchInternshipPostings().then(setPostings).catch(() => toast.error('Failed to load internships'));
   }, []);
 
-  const onFileChange = (event) => {
+  const onScreenshotChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+      toast.error('Please upload an image file for payment proof');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setScreenshotPreview(reader.result);
-      setScreenshotData(reader.result);
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await readFileAsDataUrl(file);
+    setScreenshotPreview(dataUrl);
+    setScreenshotData(dataUrl);
+  };
+
+  const onCvChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('CV must be a PDF file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('CV must be under 5MB');
+      return;
+    }
+
+    const dataUrl = await readFileAsDataUrl(file);
+    setCvFileName(file.name);
+    setCvData(dataUrl);
   };
 
   const onSubmit = async (data) => {
+    if (!cvData) {
+      toast.error('Please upload your CV in PDF format');
+      return;
+    }
     if (!screenshotData) {
       toast.error('Please upload your payment screenshot');
       return;
@@ -47,7 +85,13 @@ export default function StudentOnboarding() {
 
     const result = await submitPortalAccess({
       postingId: data.postingId,
+      fullName: data.fullName,
+      fatherName: data.fatherName,
+      institute: data.institute,
+      cnic: data.cnic,
+      contactNumber: data.contactNumber,
       notes: data.notes,
+      cvPdf: cvData,
       paymentScreenshot: screenshotData,
     });
 
@@ -64,14 +108,15 @@ export default function StudentOnboarding() {
   return (
     <AuthLayout
       variant="student"
-      title="Complete Your Application"
-      subtitle="Choose your internship track and upload your payment screenshot. Full portal access is granted after superadmin approval."
+      wide
+      title="Internship Application Form"
+      subtitle="Complete your profile, upload your CV (PDF), and submit payment proof. Portal access is granted after superadmin approval."
       backLink={ROUTES.LANDING}
       backLabel="Back to home"
       features={[
-        'Select your preferred internship track',
-        'Upload payment confirmation screenshot',
-        'Get notified once approved',
+        'Personal & academic details',
+        'CV upload in PDF format',
+        'Payment screenshot verification',
       ]}
     >
       {user?.portalAccessStatus === PORTAL_ACCESS_STATUS.REJECTED && (
@@ -82,6 +127,60 @@ export default function StudentOnboarding() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="Full Name"
+            icon={User}
+            placeholder="Muhammad Abdullah"
+            error={errors.fullName?.message}
+            {...register('fullName', { required: 'Full name is required' })}
+          />
+          <Input
+            label="Father Name"
+            icon={User}
+            placeholder="Father's full name"
+            error={errors.fatherName?.message}
+            {...register('fatherName', { required: 'Father name is required' })}
+          />
+        </div>
+
+        <Input
+          label="Institute / University"
+          icon={Building2}
+          placeholder="University of Engineering and Technology"
+          error={errors.institute?.message}
+          {...register('institute', { required: 'Institute name is required' })}
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="CNIC"
+            icon={CreditCard}
+            placeholder="12345-1234567-1"
+            error={errors.cnic?.message}
+            {...register('cnic', {
+              required: 'CNIC is required',
+              pattern: {
+                value: /^(\d{5}-\d{7}-\d|\d{13})$/,
+                message: 'Use format 12345-1234567-1',
+              },
+            })}
+          />
+          <Input
+            label="Contact Number"
+            icon={Phone}
+            placeholder="03001234567"
+            error={errors.contactNumber?.message}
+            {...register('contactNumber', {
+              required: 'Contact number is required',
+              pattern: {
+                value: /^(\+92|0)?3\d{9}$/,
+                message: 'Enter a valid Pakistani mobile number',
+              },
+            })}
+          />
+        </div>
+
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
             Internship Track
@@ -103,12 +202,25 @@ export default function StudentOnboarding() {
 
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            CV (PDF only)
+          </label>
+          <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors">
+            <FileText className="w-6 h-6 text-emerald-600" />
+            <span className="text-sm text-gray-600">
+              {cvFileName || 'Upload your CV as PDF (max 5MB)'}
+            </span>
+            <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={onCvChange} />
+          </label>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
             Payment Screenshot
           </label>
           <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors">
             <Upload className="w-6 h-6 text-emerald-600" />
             <span className="text-sm text-gray-600">Upload payment proof (PNG, JPG, WebP)</span>
-            <input type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+            <input type="file" accept="image/*" className="hidden" onChange={onScreenshotChange} />
           </label>
           {screenshotPreview && (
             <img src={screenshotPreview} alt="Payment preview" className="mt-3 rounded-lg border border-gray-100 max-h-48 object-contain" />
@@ -128,7 +240,7 @@ export default function StudentOnboarding() {
         </div>
 
         <Button type="submit" className="w-full !from-emerald-600 !to-teal-500" size="lg" disabled={isSubmitting}>
-          Submit for Approval
+          Submit Application
         </Button>
       </form>
     </AuthLayout>

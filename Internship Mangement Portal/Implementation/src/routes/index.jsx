@@ -27,6 +27,7 @@ import Notifications from '../pages/Notifications';
 import UserProfile from '../pages/UserProfile';
 import Certificate from '../pages/Certificate';
 import Settings from '../pages/Settings';
+import MyApplications from '../pages/MyApplications';
 
 export default function AppRoutes() {
   return (
@@ -55,16 +56,18 @@ export default function AppRoutes() {
         <Route path={ROUTES.STUDENT.PENDING_APPROVAL} element={<StudentPendingApproval />} />
       </Route>
 
-      <Route element={<PublicRoute />}>
+      <Route element={<PublicRoute redirectRoles={[ROLES.SUPERADMIN]} />}>
         <Route path={ROUTES.SUPERADMIN.LOGIN} element={<SuperadminLogin />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]} requirePortalApproval loginPath={ROUTES.STUDENT.LOGIN} />}>
         <Route element={<DashboardLayout />}>
           <Route path={ROUTES.STUDENT.DASHBOARD} element={<InternDashboard />} />
+          <Route path={ROUTES.STUDENT.APPLICATIONS} element={<MyApplications />} />
           <Route path={ROUTES.STUDENT.TASKS} element={<TaskManagement />} />
-          <Route path={ROUTES.STUDENT.TASK_SUBMIT} element={<TaskSubmission />} />
+          <Route path={`${ROUTES.STUDENT.TASKS}/:id/submit`} element={<TaskSubmission />} />
           <Route path={`${ROUTES.STUDENT.TASKS}/:id`} element={<TaskDetails />} />
+          <Route path={ROUTES.STUDENT.TASK_SUBMIT} element={<Navigate to={ROUTES.STUDENT.TASKS} replace />} />
           <Route path={ROUTES.STUDENT.PROGRESS} element={<ProgressTracking />} />
           <Route path={ROUTES.STUDENT.CERTIFICATE} element={<Certificate />} />
           <Route path={ROUTES.STUDENT.REPORTS} element={<Reports />} />
@@ -81,8 +84,9 @@ export default function AppRoutes() {
           <Route path={ROUTES.SUPERADMIN.INTERNS} element={<InternManagement />} />
           <Route path={ROUTES.SUPERADMIN.APPROVALS} element={<PortalApprovals />} />
           <Route path={ROUTES.SUPERADMIN.TASKS} element={<TaskManagement />} />
-          <Route path={ROUTES.SUPERADMIN.TASK_SUBMIT} element={<TaskSubmission />} />
+          <Route path={`${ROUTES.SUPERADMIN.TASKS}/:id/submit`} element={<TaskSubmission />} />
           <Route path={`${ROUTES.SUPERADMIN.TASKS}/:id`} element={<TaskDetails />} />
+          <Route path={ROUTES.SUPERADMIN.TASK_SUBMIT} element={<Navigate to={ROUTES.SUPERADMIN.TASKS} replace />} />
           <Route path={ROUTES.SUPERADMIN.PROGRESS} element={<ProgressTracking />} />
           <Route path={ROUTES.SUPERADMIN.REPORTS} element={<Reports />} />
           <Route path={ROUTES.SUPERADMIN.FEEDBACK} element={<Feedback />} />

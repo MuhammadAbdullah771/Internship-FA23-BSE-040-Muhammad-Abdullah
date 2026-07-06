@@ -11,6 +11,13 @@ export const createTaskSchema = z.object({
   dueDate: z.coerce.date().optional().nullable(),
 });
 
+const submissionSchema = z.object({
+  githubLink: z.string().trim().max(500).optional(),
+  liveUrl: z.string().trim().max(500).optional(),
+  comments: z.string().max(2000).optional(),
+  submit: z.boolean().optional(),
+});
+
 export const updateTaskSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(2000).optional(),
@@ -18,6 +25,7 @@ export const updateTaskSchema = z.object({
   status: z.enum(TASK_STATUSES).optional(),
   assigneeId: z.string().regex(/^[a-f\d]{24}$/i).optional().nullable(),
   dueDate: z.coerce.date().optional().nullable(),
+  submission: submissionSchema.optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'At least one field required' });
 
 export const taskIdParamSchema = z.object({

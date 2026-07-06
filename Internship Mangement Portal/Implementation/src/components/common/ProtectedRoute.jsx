@@ -61,12 +61,16 @@ export function StudentAccessRoute({ allowedStatuses }) {
   return <Outlet />;
 }
 
-export function PublicRoute({ redirectIfAuth = true }) {
+export function PublicRoute({ redirectIfAuth = true, redirectRoles }) {
   const { isAuthenticated, user, isLoading } = useAuth();
 
   if (isLoading) return <AuthLoadingScreen />;
 
   if (redirectIfAuth && isAuthenticated) {
+    if (redirectRoles && !redirectRoles.includes(user.role)) {
+      return <Outlet />;
+    }
+
     const target = user.role === ROLES.STUDENT
       ? getStudentAccessPath(user)
       : getHomePath(user.role);

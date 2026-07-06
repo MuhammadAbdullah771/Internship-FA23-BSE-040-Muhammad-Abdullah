@@ -23,6 +23,9 @@ export async function syncClerkUser({ clerkId, email, firstName, lastName, image
 
   user = await User.findOne({ email: normalizedEmail });
   if (user) {
+    if (user.role === ROLES.SUPERADMIN) {
+      throw new AppError('Superadmin accounts use the admin login only', 403, 'SUPERADMIN_PASSWORD_ONLY');
+    }
     user.clerkId = clerkId;
     if (imageUrl && !user.avatar) user.avatar = imageUrl;
     await user.save();
@@ -93,16 +96,21 @@ export async function login({ email, password, expectedRole }) {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
-  const passwordMatch = await user.comparePassword(password);
-  if (!passwordMatch) {
+  if (expectedRole === ROLES.SUPERADMIN && user.role !== ROLES.SUPERADMIN) {
+    throw new AppError('Access denied. Superadmin credentials required.', 403, 'ROLE_MISMATCH');
+  }
+
+  if (expectedRole === ROLES.STUDENT && user.role === ROLES.SUPERADMIN) {
+    throw new AppError('Use the superadmin login page for admin accounts.', 403, 'ROLE_MISMATCH');
+  }
+
+  if (!user.passwordHash) {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
-  if (expectedRole && user.role !== expectedRole) {
-    const message = expectedRole === ROLES.SUPERADMIN
-      ? 'Access denied. Superadmin credentials required.'
-      : 'This account cannot access the internship portal.';
-    throw new AppError(message, 403, 'ROLE_MISMATCH');
+  const passwordMatch = await user.comparePassword(password);
+  if (!passwordMatch) {
+    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
 
   const tokens = await issueTokenPair(user);
@@ -186,4 +194,21 @@ export async function resetPassword({ token, password }) {
   await RefreshToken.deleteMany({ userId: user._id });
 
   return { message: 'Password updated successfully' };
+}
+
+export async function updateProfile(userId, { firstName, lastName, contactNumber }) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  if (firstName) user.firstName = firstName;
+  if (lastName) user.lastName = lastName;
+  if (contactNumber !== undefined) {
+    if (!user.portalAccess) user.portalAccess = {};
+    user.portalAccess.contactNumber = contactNumber;
+  }
+
+  await user.save();
+  return toUserDTO(user);
 }

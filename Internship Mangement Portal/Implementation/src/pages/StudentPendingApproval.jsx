@@ -31,6 +31,11 @@ export default function StudentPendingApproval() {
             Internship: <strong>{user.portalAccess.internshipTitle}</strong>
           </p>
         )}
+        {user?.portalAccess?.institute && (
+          <p className="text-sm text-gray-500 mt-1">
+            Institute: <strong>{user.portalAccess.institute}</strong>
+          </p>
+        )}
         <p className="text-xs text-gray-400 mt-6">
           You cannot access the internship portal or dashboard until a superadmin approves your account.
         </p>

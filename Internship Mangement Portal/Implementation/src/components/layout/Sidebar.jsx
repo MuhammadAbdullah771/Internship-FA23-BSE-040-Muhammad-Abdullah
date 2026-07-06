@@ -1,14 +1,14 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ClipboardList, BarChart3, Settings,
-  HelpCircle, Plus, X, TrendingUp, LogOut, Briefcase, GraduationCap, Award, Shield, UserCheck,
+  HelpCircle, Plus, X, TrendingUp, LogOut, Briefcase, GraduationCap, Award, Shield, UserCheck, FileText,
 } from 'lucide-react';
 import { cn } from '../../utils';
 import { useAuth } from '../../context/AuthContext';
 import { ROUTES, getLoginPath } from '../../constants';
 
 const iconMap = {
-  LayoutDashboard, Users, ClipboardList, BarChart3, Settings, TrendingUp, Briefcase, Award, UserCheck,
+  LayoutDashboard, Users, ClipboardList, BarChart3, Settings, TrendingUp, Briefcase, Award, UserCheck, FileText,
 };
 
 const DASHBOARD_PATHS = [ROUTES.SUPERADMIN.DASHBOARD, ROUTES.STUDENT.DASHBOARD, ROUTES.STUDENT.PORTAL];

@@ -18,6 +18,40 @@ const portalAccessSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    fullName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: '',
+    },
+    fatherName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: '',
+    },
+    institute: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: '',
+    },
+    cnic: {
+      type: String,
+      trim: true,
+      maxlength: 15,
+      default: '',
+    },
+    contactNumber: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: '',
+    },
+    cvPdf: {
+      type: String,
+      default: '',
+    },
     paymentScreenshot: {
       type: String,
       default: '',

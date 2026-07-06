@@ -10,39 +10,69 @@ import Avatar from '../components/ui/Avatar';
 import { PRIORITY_COLORS } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useAppPaths } from '../hooks/useAppPaths';
-import { fetchTaskBoard } from '../services/taskService';
+import { fetchTaskBoard, updateTaskStatus } from '../services/taskService';
 
 const EMPTY_BOARD = { todo: [], inProgress: [], review: [] };
 
-function TaskCard({ task, paths }) {
+const STUDENT_STATUS_OPTIONS = [
+  { value: 'todo', label: 'To Do' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'review', label: 'Submit for Review' },
+];
+
+function TaskCard({ task, paths, isStudent, onStatusChange }) {
+  const handleStatusChange = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newStatus = e.target.value;
+    if (newStatus === task.status) return;
+    const result = await onStatusChange(task.id, newStatus);
+    if (!result.success) toast.error(result.error);
+  };
+
   return (
-    <Link to={paths.taskDetail(task.id)}>
-      <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer">
-        <Badge className={`mb-2 ${PRIORITY_COLORS[task.priority]}`}>{task.priority}</Badge>
-        <h3 className="font-semibold text-gray-900 text-sm mb-1">{task.title}</h3>
-        {task.description && (
-          <p className="text-xs text-gray-500 mb-3 line-clamp-2">{task.description}</p>
-        )}
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center">
-            {task.assignee ? <Avatar src={task.assignee} size="sm" /> : null}
-          </div>
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <span className={task.dateUrgent ? 'text-red-500 font-medium' : ''}>{task.date}</span>
-            {task.attachments > 0 && (
-              <span className="flex items-center gap-0.5"><Paperclip className="w-3 h-3" />{task.attachments}</span>
-            )}
-            {task.comments > 0 && (
-              <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{task.comments}</span>
-            )}
+    <div className="relative">
+      <Link to={paths.taskDetail(task.id)}>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer">
+          <Badge className={`mb-2 ${PRIORITY_COLORS[task.priority]}`}>{task.priority}</Badge>
+          <h3 className="font-semibold text-gray-900 text-sm mb-1">{task.title}</h3>
+          {task.description && (
+            <p className="text-xs text-gray-500 mb-3 line-clamp-2">{task.description}</p>
+          )}
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center">
+              {task.assignee ? <Avatar src={task.assignee} size="sm" /> : null}
+            </div>
+            <div className="flex items-center gap-3 text-xs text-gray-400">
+              <span className={task.dateUrgent ? 'text-red-500 font-medium' : ''}>{task.date}</span>
+              {task.attachments > 0 && (
+                <span className="flex items-center gap-0.5"><Paperclip className="w-3 h-3" />{task.attachments}</span>
+              )}
+              {task.comments > 0 && (
+                <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{task.comments}</span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+      {isStudent && (
+        <select
+          value={task.status}
+          onChange={handleStatusChange}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-2 right-2 text-[10px] border border-gray-200 rounded-md px-1.5 py-0.5 bg-white text-gray-600"
+          aria-label={`Change status for ${task.title}`}
+        >
+          {STUDENT_STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }
 
-function KanbanColumn({ title, items, count, paths }) {
+function KanbanColumn({ title, items, count, paths, isStudent, onStatusChange }) {
   return (
     <div className="flex-1 min-w-[280px]">
       <div className="flex items-center gap-2 mb-4 px-1">
@@ -55,7 +85,15 @@ function KanbanColumn({ title, items, count, paths }) {
         {items.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-8">No tasks</p>
         ) : (
-          items.map((task) => <TaskCard key={task.id} task={task} paths={paths} />)
+          items.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              paths={paths}
+              isStudent={isStudent}
+              onStatusChange={onStatusChange}
+            />
+          ))
         )}
       </div>
     </div>
@@ -66,7 +104,7 @@ export default function TaskManagement() {
   const [view, setView] = useState('board');
   const [board, setBoard] = useState(EMPTY_BOARD);
   const [loading, setLoading] = useState(true);
-  const { isSuperadmin } = useAuth();
+  const { isSuperadmin, isStudent } = useAuth();
   const paths = useAppPaths();
 
   const loadTasks = useCallback(async () => {
@@ -84,6 +122,15 @@ export default function TaskManagement() {
 
   useEffect(() => {
     loadTasks();
+  }, [loadTasks]);
+
+  const handleStatusChange = useCallback(async (taskId, status) => {
+    const result = await updateTaskStatus(taskId, status);
+    if (result.success) {
+      await loadTasks();
+      toast.success('Task status updated');
+    }
+    return result;
   }, [loadTasks]);
 
   const allTasks = [...board.todo, ...board.inProgress, ...board.review];
@@ -132,9 +179,9 @@ export default function TaskManagement() {
         </div>
       ) : view === 'board' ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
-          <KanbanColumn title="To Do" items={board.todo} count={board.todo.length} paths={paths} />
-          <KanbanColumn title="In Progress" items={board.inProgress} count={board.inProgress.length} paths={paths} />
-          <KanbanColumn title="Review" items={board.review} count={board.review.length} paths={paths} />
+          <KanbanColumn title="To Do" items={board.todo} count={board.todo.length} paths={paths} isStudent={isStudent} onStatusChange={handleStatusChange} />
+          <KanbanColumn title="In Progress" items={board.inProgress} count={board.inProgress.length} paths={paths} isStudent={isStudent} onStatusChange={handleStatusChange} />
+          <KanbanColumn title="Review" items={board.review} count={board.review.length} paths={paths} isStudent={isStudent} onStatusChange={handleStatusChange} />
         </div>
       ) : (
         <Card>
@@ -142,7 +189,15 @@ export default function TaskManagement() {
             {allTasks.length === 0 ? (
               <p className="text-center text-gray-500 py-12">No tasks assigned yet.</p>
             ) : (
-              allTasks.map((task) => <TaskCard key={task.id} task={task} paths={paths} />)
+              allTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  paths={paths}
+                  isStudent={isStudent}
+                  onStatusChange={handleStatusChange}
+                />
+              ))
             )}
           </div>
         </Card>

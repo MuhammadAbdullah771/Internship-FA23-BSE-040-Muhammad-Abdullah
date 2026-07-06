@@ -1,37 +1,152 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Code, Link as LinkIcon, UploadCloud, Image, X, Pencil, Lightbulb, MoveRight } from 'lucide-react';
+import { Code, Link as LinkIcon, UploadCloud, Lightbulb, MoveRight, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
-import { submissionHistory } from '../constants/data';
+import { useAppPaths } from '../hooks/useAppPaths';
+import { fetchTask, submitTask } from '../services/taskService';
+
+const STATUS_LABELS = {
+  todo: 'TO DO',
+  in_progress: 'IN PROGRESS',
+  review: 'IN REVIEW',
+  done: 'COMPLETED',
+};
+
+function formatSubmissionTime(date) {
+  if (!date) return '';
+  return new Date(date).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 export default function TaskSubmission() {
-  const { register, handleSubmit } = useForm();
-  const [files, setFiles] = useState(['screenshot_mobile.png']);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const paths = useAppPaths();
+  const [task, setTask] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const { register, handleSubmit, reset } = useForm();
 
-  const onSubmit = () => {
-    toast.success('Draft saved successfully');
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await fetchTask(id);
+        if (!cancelled) {
+          setTask(data);
+          reset({
+            github: data.submission?.githubLink || '',
+            liveUrl: data.submission?.liveUrl || '',
+            comments: data.submission?.comments || '',
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error('Task not found');
+          navigate(paths.TASKS);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [id, navigate, paths.TASKS, reset]);
+
+  const saveSubmission = async (formData, submit = false) => {
+    setSubmitting(true);
+    const result = await submitTask(id, {
+      githubLink: formData.github,
+      liveUrl: formData.liveUrl || '',
+      comments: formData.comments || '',
+      submit,
+    });
+    setSubmitting(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    setTask(result.task);
+    if (submit) {
+      toast.success('Task submitted for review!');
+      navigate(paths.taskDetail(id));
+    } else {
+      toast.success('Draft saved successfully');
+    }
   };
 
-  const removeFile = (name) => setFiles(files.filter((f) => f !== name));
+  const onSaveDraft = handleSubmit((data) => saveSubmission(data, false));
+  const onSubmit = handleSubmit((data) => saveSubmission(data, true));
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!task) return null;
+
+  const history = [];
+  if (task.submission?.submittedAt) {
+    history.push({
+      id: 'submitted',
+      title: 'Submitted for Review',
+      time: formatSubmissionTime(task.submission.submittedAt),
+      detail: 'Your work was sent to your mentor for review.',
+      active: true,
+    });
+  }
+  if (task.submission?.githubLink || task.submission?.status === 'draft') {
+    history.push({
+      id: 'draft',
+      title: task.submission?.status === 'draft' ? 'Draft Saved' : 'Work Uploaded',
+      time: formatSubmissionTime(task.updatedAt),
+      detail: task.submission?.githubLink ? `GitHub: ${task.submission.githubLink}` : 'Draft in progress',
+      active: !task.submission?.submittedAt,
+    });
+  }
+  history.push({
+    id: 'assigned',
+    title: 'Task Assigned',
+    time: formatSubmissionTime(task.createdAt),
+    detail: 'You received this assignment from your mentor.',
+    active: false,
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <p className="text-sm text-gray-400 mb-1">Tasks &gt; Frontend Development &gt; Submit</p>
+          <p className="text-sm text-gray-400 mb-1">
+            <Link to={paths.TASKS} className="hover:text-gray-600">Tasks</Link>
+            {' > '}
+            <Link to={paths.taskDetail(id)} className="hover:text-gray-600">{task.title}</Link>
+            {' > Submit'}
+          </p>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Submit Task</h1>
-          <p className="text-gray-500 mt-1">Implement responsive dashboard layout</p>
+          <p className="text-gray-500 mt-1">{task.title}</p>
         </motion.div>
         <Badge variant="primary" className="self-start flex items-center gap-1.5 px-3 py-1">
           <span className="w-2 h-2 rounded-full bg-primary-600" />
-          IN PROGRESS
+          {STATUS_LABELS[task.status] || task.status}
         </Badge>
       </div>
 
@@ -39,18 +154,13 @@ export default function TaskSubmission() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Task Details</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Build a fully responsive dashboard layout that works across mobile, tablet, and desktop viewports. Submit your GitHub repository link and any relevant documentation.
+            <p className="text-sm text-gray-600 mb-4 whitespace-pre-wrap">
+              {task.description || 'No description provided.'}
             </p>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start gap-2"><span className="text-primary-500 mt-1">&#8226;</span>Support mobile, tablet, and desktop breakpoints</li>
-              <li className="flex items-start gap-2"><span className="text-primary-500 mt-1">&#8226;</span>Follow WCAG 2.1 accessibility guidelines</li>
-              <li className="flex items-start gap-2"><span className="text-primary-500 mt-1">&#8226;</span>Include unit tests for core components</li>
-            </ul>
           </Card>
 
           <Card>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                   GitHub Link <span className="text-red-500">*</span>
@@ -76,28 +186,33 @@ export default function TaskSubmission() {
 
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Attachments</p>
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-primary-300 transition-colors cursor-pointer">
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center opacity-60">
                   <UploadCloud className="w-8 h-8 text-primary-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Drag and drop files here or <span className="text-primary-600 font-medium">browse files</span></p>
-                  <p className="text-xs text-gray-400 mt-1">Max 10MB</p>
+                  <p className="text-sm text-gray-600">File uploads coming soon</p>
+                  <p className="text-xs text-gray-400 mt-1">Use GitHub link for now</p>
                 </div>
-                {files.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {files.map((file) => (
-                      <div key={file} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
-                        <Image className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-700 flex-1">{file}</span>
-                        <button type="button" onClick={() => removeFile(file)} aria-label={`Remove ${file}`}>
-                          <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              <div className="flex justify-center pt-2">
-                <Button type="submit" variant="secondary" className="min-w-[160px]">Save Draft</Button>
+              <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="min-w-[160px]"
+                  onClick={onSaveDraft}
+                  disabled={submitting}
+                >
+                  Save Draft
+                </Button>
+                <Button
+                  type="button"
+                  variant="purple"
+                  icon={Send}
+                  className="min-w-[160px]"
+                  onClick={onSubmit}
+                  disabled={submitting}
+                >
+                  Submit for Review
+                </Button>
               </div>
             </form>
           </Card>
@@ -107,16 +222,16 @@ export default function TaskSubmission() {
           <Card>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Submission History</h3>
             <div className="space-y-0">
-              {submissionHistory.map((item, i) => (
+              {history.map((item, i) => (
                 <div key={item.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
                     <div className={`w-3 h-3 rounded-full ${item.active ? 'bg-primary-600 ring-4 ring-primary-100' : 'bg-gray-200'}`} />
-                    {i < submissionHistory.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+                    {i < history.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
                   </div>
                   <div className="pb-6">
                     <p className="text-sm font-medium text-gray-900">{item.title}</p>
                     <p className="text-xs text-gray-400">{item.time}</p>
-                    <p className="text-xs text-gray-500 mt-1">{item.detail}</p>
+                    <p className="text-xs text-gray-500 mt-1 break-all">{item.detail}</p>
                   </div>
                 </div>
               ))}
@@ -127,13 +242,11 @@ export default function TaskSubmission() {
             <div className="flex items-start gap-3">
               <Lightbulb className="w-5 h-5 text-primary-600 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-semibold text-primary-700 mb-1">Need Help?</h4>
-                <p className="text-xs text-primary-600/80 leading-relaxed mb-3">
-                  Check our submission guidelines for tips on formatting your work and what reviewers look for.
+                <h4 className="font-semibold text-primary-700 mb-1">Submission Tips</h4>
+                <p className="text-xs text-primary-600/80 leading-relaxed">
+                  Include a working GitHub repository link. Make sure your README explains how to run the project.
+                  Submit for review only when your work is complete.
                 </p>
-                <a href="#" className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-500">
-                  Read Guidelines <MoveRight className="w-3 h-3" />
-                </a>
               </div>
             </div>
           </div>

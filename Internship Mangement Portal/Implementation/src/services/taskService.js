@@ -34,3 +34,14 @@ export async function updateTaskStatus(id, status) {
     return { success: false, error: extractError(error) };
   }
 }
+
+export async function submitTask(id, { githubLink, liveUrl, comments, submit = false }) {
+  try {
+    const { data } = await api.patch(`/tasks/${id}`, {
+      submission: { githubLink, liveUrl, comments, submit },
+    });
+    return { success: true, task: data.data.task };
+  } catch (error) {
+    return { success: false, error: extractError(error) };
+  }
+}

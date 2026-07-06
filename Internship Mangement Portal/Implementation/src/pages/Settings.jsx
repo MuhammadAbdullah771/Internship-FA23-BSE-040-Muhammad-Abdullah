@@ -1,124 +1,175 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, Mail } from 'lucide-react';
+import { Pencil, Mail, Save } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
-import Avatar from '../components/ui/Avatar';
-import { skills, timeline } from '../constants/data';
+import { useAuth } from '../context/AuthContext';
+import { updateProfile } from '../services/authService';
+import { PORTAL_ACCESS_STATUS } from '../constants';
 
-const tabs = ['Personal Info', 'Skills & Experience', 'Internship Details', 'Security'];
+const PORTAL_STATUS_LABELS = {
+  [PORTAL_ACCESS_STATUS.UNSUBMITTED]: { label: 'Not Submitted', variant: 'default' },
+  [PORTAL_ACCESS_STATUS.PENDING]: { label: 'Pending Approval', variant: 'warning' },
+  [PORTAL_ACCESS_STATUS.APPROVED]: { label: 'Approved', variant: 'success' },
+  [PORTAL_ACCESS_STATUS.REJECTED]: { label: 'Rejected', variant: 'danger' },
+};
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('Personal Info');
+  const { user, refreshUser } = useAuth();
+  const portal = user?.portalAccess || {};
+  const statusConfig = PORTAL_STATUS_LABELS[user?.portalAccessStatus] || PORTAL_STATUS_LABELS.unsubmitted;
+
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [contactNumber, setContactNumber] = useState(portal.contactNumber || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setFirstName(user?.firstName || '');
+    setLastName(user?.lastName || '');
+    setContactNumber(user?.portalAccess?.contactNumber || '');
+  }, [user]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const result = await updateProfile({ firstName, lastName, contactNumber });
+    setSaving(false);
+
+    if (result.success) {
+      await refreshUser();
+      toast.success('Profile updated successfully');
+    } else {
+      toast.error(result.error);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <Card className="relative overflow-visible">
         <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="relative -mt-2">
-            <Avatar src="https://i.pravatar.cc/150?u=alex" name="Alex Mercer" size="xl" />
-            <button className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50" aria-label="Edit photo">
-              <Pencil className="w-3.5 h-3.5 text-gray-500" />
-            </button>
+            <div className="w-20 h-20 rounded-2xl overflow-hidden">
+              <img
+                src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'S')}`}
+                alt={user?.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">Alex Mercer</h1>
-            <p className="text-gray-500 mt-0.5">Software Engineering Intern &bull; Cohort 2024</p>
+            <h1 className="text-2xl font-bold text-gray-900">{user?.name || 'Student'}</h1>
+            <p className="text-gray-500 mt-0.5">{portal.internshipTitle || 'Internship Student'}</p>
+            <Badge variant={statusConfig.variant} className="mt-2">{statusConfig.label}</Badge>
           </div>
-          <Button variant="outline" size="sm">View Public Profile</Button>
         </div>
       </Card>
 
-      <div className="border-b border-gray-200 overflow-x-auto">
-        <div className="flex gap-6 min-w-max">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === tab ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {tab}
-              {activeTab === tab && (
-                <motion.span layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Input
+              label="First Name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+            <Input
+              label="Last Name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Email Address"
+                icon={Mail}
+                value={user?.email || ''}
+                disabled
+                helper="Email is managed through your sign-in provider."
+              />
+            </div>
+            <Input
+              label="Contact Number"
+              value={contactNumber}
+              onChange={(e) => setContactNumber(e.target.value)}
+              placeholder="+92 300 1234567"
+            />
+            <Input
+              label="CNIC"
+              value={portal.cnic || ''}
+              disabled
+              helper="Set during onboarding."
+            />
+            <div className="sm:col-span-2">
+              <Input
+                label="Institute"
+                value={portal.institute || ''}
+                disabled
+                helper="Set during onboarding."
+              />
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end">
+            <Button variant="purple" icon={Save} onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </Card>
 
-      {activeTab === 'Personal Info' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Input label="First Name" defaultValue="Alex" />
-              <Input label="Last Name" defaultValue="Mercer" />
-              <div className="sm:col-span-2">
-                <Input
-                  label="Email Address"
-                  icon={Mail}
-                  defaultValue="alex.mercer@example.com"
-                  disabled
-                  helper="Email cannot be changed directly. Contact IT support."
-                />
+        <div className="space-y-6">
+          <Card>
+            <h3 className="font-semibold text-gray-900 mb-4">Internship Details</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-gray-400">Track</p>
+                <p className="font-medium text-gray-900">{portal.internshipTitle || '—'}</p>
               </div>
-              <Input label="Phone Number" defaultValue="+1 (555) 123-4567" />
-              <Input label="Location" defaultValue="San Francisco, CA" />
-              <div className="sm:col-span-2">
-                <Textarea
-                  label="Bio"
-                  rows={4}
-                  defaultValue="Passionate software engineering intern with a focus on frontend development and user experience. Currently working on dashboard components and design system integration."
-                />
+              <div>
+                <p className="text-xs text-gray-400">Father&apos;s Name</p>
+                <p className="font-medium text-gray-900">{portal.fatherName || '—'}</p>
               </div>
+              {portal.submittedAt && (
+                <div>
+                  <p className="text-xs text-gray-400">Application Submitted</p>
+                  <p className="font-medium text-gray-900">
+                    {new Date(portal.submittedAt).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              )}
+              {portal.rejectionReason && (
+                <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                  <p className="text-xs text-red-600 font-medium">Rejection Reason</p>
+                  <p className="text-sm text-red-700 mt-1">{portal.rejectionReason}</p>
+                </div>
+              )}
             </div>
           </Card>
 
-          <div className="space-y-6">
+          {(portal.cvPdf || portal.paymentScreenshot) && (
             <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Core Skills</h3>
-                <button aria-label="Edit skills"><Pencil className="w-4 h-4 text-gray-400" /></button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <Badge key={skill} variant="primary">{skill}</Badge>
-                ))}
+              <h3 className="font-semibold text-gray-900 mb-4">Onboarding Documents</h3>
+              <div className="space-y-2 text-sm">
+                {portal.cvPdf && (
+                  <a href={portal.cvPdf} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline block">
+                    View CV (PDF)
+                  </a>
+                )}
+                {portal.paymentScreenshot && (
+                  <a href={portal.paymentScreenshot} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline block">
+                    View Payment Screenshot
+                  </a>
+                )}
               </div>
             </Card>
-
-            <Card>
-              <h3 className="font-semibold text-gray-900 mb-4">Timeline</h3>
-              <div className="space-y-4">
-                {timeline.map((item, i) => (
-                  <div key={item.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full ${item.current ? 'bg-primary-600' : 'bg-gray-200'}`} />
-                      {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
-                    </div>
-                    <div className="pb-2">
-                      <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                      {item.subtext && <p className="text-xs text-gray-400">{item.subtext}</p>}
-                      {item.date && <p className="text-xs text-gray-400">{item.date}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
+          )}
         </div>
-      )}
-
-      {activeTab !== 'Personal Info' && (
-        <Card>
-          <p className="text-gray-500 text-center py-12">Content for {activeTab} will be available soon.</p>
-        </Card>
-      )}
+      </div>
     </div>
   );
 }

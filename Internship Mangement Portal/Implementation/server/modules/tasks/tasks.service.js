@@ -41,8 +41,31 @@ export async function updateTask(id, payload, user) {
     if (task.assigneeId?.toString() !== user._id.toString()) {
       throw new AppError('Access denied', 403, 'FORBIDDEN');
     }
-    const allowed = { status: payload.status };
-    Object.assign(task, allowed);
+
+    if (payload.status) {
+      task.status = payload.status;
+    }
+
+    if (payload.submission) {
+      const { githubLink, liveUrl, comments, submit } = payload.submission;
+      if (!task.submission) task.submission = {};
+
+      if (githubLink !== undefined) task.submission.githubLink = githubLink;
+      if (liveUrl !== undefined) task.submission.liveUrl = liveUrl;
+      if (comments !== undefined) task.submission.comments = comments;
+
+      if (submit) {
+        const link = task.submission.githubLink?.trim();
+        if (!link) {
+          throw new AppError('GitHub link is required to submit', 400, 'GITHUB_REQUIRED');
+        }
+        task.submission.status = 'submitted';
+        task.submission.submittedAt = new Date();
+        task.status = 'review';
+      } else if (githubLink !== undefined || liveUrl !== undefined || comments !== undefined) {
+        task.submission.status = 'draft';
+      }
+    }
   } else {
     Object.assign(task, payload);
   }

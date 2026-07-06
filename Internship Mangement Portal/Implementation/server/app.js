@@ -10,6 +10,7 @@ import internRoutes from './modules/interns/interns.routes.js';
 import taskRoutes from './modules/tasks/tasks.routes.js';
 import internshipRoutes from './modules/internships/internships.routes.js';
 import portalAccessRoutes from './modules/portal-access/portal-access.routes.js';
+import studentRoutes from './modules/students/students.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 export function createApp() {
@@ -40,6 +41,7 @@ export function createApp() {
   app.use('/api/tasks', taskRoutes);
   app.use('/api/internships', internshipRoutes);
   app.use('/api/portal-access', portalAccessRoutes);
+  app.use('/api/students', studentRoutes);
   app.use('/uploads', express.static(path.join(env.rootDir, 'server/uploads')));
 
   if (env.isProd) {

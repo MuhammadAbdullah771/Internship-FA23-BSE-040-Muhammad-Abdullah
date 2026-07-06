@@ -1,14 +1,49 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import CertificatePanel from '../components/student/CertificatePanel';
-import { certificationData, internshipTrack } from '../constants/studentData';
 import { useAuth } from '../context/AuthContext';
+import { fetchStudentDashboard } from '../services/studentService';
 
 export default function Certificate() {
   const { user } = useAuth();
-  const [certStatus, setCertStatus] = useState('pending');
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStudentDashboard()
+      .then(setDashboard)
+      .catch(() => toast.error('Failed to load certificate status'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const progress = dashboard?.stats?.progressPercent || 0;
+  const trackTitle = dashboard?.trackTitle || 'Internship';
+  const certStatus = dashboard?.certificateStatus || 'locked';
+
+  const certificationData = {
+    program: trackTitle,
+    grade: progress >= 80 ? 'A' : progress >= 60 ? 'B' : 'In Progress',
+    skills: dashboard?.intern?.track ? [dashboard.intern.track] : [trackTitle],
+    completionDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    certificateId: user?.id ? `IH-${user.id.slice(-8).toUpperCase()}` : 'IH-PENDING',
+  };
+
+  const internshipTrack = {
+    title: trackTitle,
+    cohort: dashboard?.cohort || 'Internship Program',
+    mentor: 'Your Mentor',
+    progress,
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -22,21 +57,10 @@ export default function Certificate() {
           studentName={user?.name || 'Student'}
           certification={certificationData}
           track={internshipTrack}
-          status={certStatus === 'verified' ? 'verified' : 'pending'}
-          onRequestVerification={() => toast.success('Verification request sent')}
-          onDownload={() => toast.success('Certificate download started')}
+          status={certStatus}
+          onRequestVerification={() => toast.success('Verification request sent to your mentor')}
+          onDownload={() => toast.success('Certificate download will be available once verified')}
         />
-        {certStatus !== 'verified' && (
-          <p className="text-xs text-gray-400 mt-4 text-center">
-            Demo:{' '}
-            <button
-              onClick={() => { setCertStatus('verified'); toast.success('Certificate verified!'); }}
-              className="text-emerald-600 font-medium hover:underline"
-            >
-              Simulate verification approval
-            </button>
-          </p>
-        )}
       </Card>
     </div>
   );

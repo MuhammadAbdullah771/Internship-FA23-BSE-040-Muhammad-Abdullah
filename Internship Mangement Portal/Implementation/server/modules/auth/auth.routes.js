@@ -7,6 +7,7 @@ import {
   refreshSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  updateProfileSchema,
 } from './auth.validation.js';
 import { validate } from '../../middleware/validate.js';
 import { authenticate, authorize } from '../../middleware/authenticate.js';
@@ -32,6 +33,7 @@ router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshSchema), authController.refresh);
 router.post('/logout', validate(refreshSchema), authController.logout);
 router.get('/me', authenticate, authController.me);
+router.patch('/me', authenticate, validate(updateProfileSchema), authController.updateMe);
 router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 

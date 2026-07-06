@@ -29,3 +29,9 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Reset token is required'),
   password: passwordSchema,
 });
+
+export const updateProfileSchema = z.object({
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  contactNumber: z.string().trim().max(20).optional(),
+}).refine((d) => Object.keys(d).length > 0, { message: 'At least one field required' });

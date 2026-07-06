@@ -4,6 +4,7 @@ import { AppError } from '../utils/AppError.js';
 import { User } from '../models/User.js';
 import { asyncHandler } from './asyncHandler.js';
 import { env } from '../config/env.js';
+import { ROLES } from '../constants/roles.js';
 import { syncClerkUser } from '../modules/auth/auth.service.js';
 
 const PLACEHOLDER_PATTERN = /your_secret_key|your_publishable_key|replace_me/i;
@@ -25,7 +26,12 @@ async function authenticateWithClerk(token) {
   const clerkUserId = payload.sub;
 
   let user = await User.findOne({ clerkId: clerkUserId });
-  if (user) return user;
+  if (user) {
+    if (user.role === ROLES.SUPERADMIN) {
+      throw new AppError('Superadmin accounts require password login', 403, 'FORBIDDEN');
+    }
+    return user;
+  }
 
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
   const email = clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress

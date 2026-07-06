@@ -11,6 +11,7 @@ export default function AuthLayout({
   backLink = ROUTES.LANDING,
   backLabel = 'Back to home',
   features = [],
+  wide = false,
 }) {
   const isSuperadmin = variant === 'superadmin';
 
@@ -86,7 +87,7 @@ export default function AuthLayout({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="w-full max-w-[420px]"
+            className={wide ? 'w-full max-w-2xl' : 'w-full max-w-[420px]'}
           >
             <Link
               to={backLink}

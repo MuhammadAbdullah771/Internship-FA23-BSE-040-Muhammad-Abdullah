@@ -6,32 +6,40 @@ import { InternshipPosting } from '../../models/InternshipPosting.js';
 import { ROLES } from '../../constants/roles.js';
 import { AppError } from '../../utils/AppError.js';
 import { toUserDTO } from '../../utils/userSerializer.js';
-import { env } from '../../config/env.js';
 
-const uploadsDir = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../uploads/payments',
-);
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const paymentsDir = path.resolve(moduleDir, '../../uploads/payments');
+const cvsDir = path.resolve(moduleDir, '../../uploads/cvs');
 
-async function ensureUploadsDir() {
-  await fs.mkdir(uploadsDir, { recursive: true });
+function mapPortalAccessFields(portalAccess = {}) {
+  return {
+    status: portalAccess.status || 'unsubmitted',
+    internshipTitle: portalAccess.internshipTitle || '',
+    postingId: portalAccess.postingId?.toString() || null,
+    fullName: portalAccess.fullName || '',
+    fatherName: portalAccess.fatherName || '',
+    institute: portalAccess.institute || '',
+    cnic: portalAccess.cnic || '',
+    contactNumber: portalAccess.contactNumber || '',
+    cvPdf: portalAccess.cvPdf || '',
+    paymentScreenshot: portalAccess.paymentScreenshot || '',
+    notes: portalAccess.notes || '',
+    submittedAt: portalAccess.submittedAt || null,
+    reviewedAt: portalAccess.reviewedAt || null,
+    rejectionReason: portalAccess.rejectionReason || '',
+  };
 }
 
 function mapApplicationUser(user) {
   const dto = toUserDTO(user);
   return {
     ...dto,
-    portalAccess: {
-      status: user.portalAccess?.status || 'unsubmitted',
-      internshipTitle: user.portalAccess?.internshipTitle || '',
-      postingId: user.portalAccess?.postingId?.toString() || null,
-      paymentScreenshot: user.portalAccess?.paymentScreenshot || '',
-      notes: user.portalAccess?.notes || '',
-      submittedAt: user.portalAccess?.submittedAt || null,
-      reviewedAt: user.portalAccess?.reviewedAt || null,
-      rejectionReason: user.portalAccess?.rejectionReason || '',
-    },
+    portalAccess: mapPortalAccessFields(user.portalAccess),
   };
+}
+
+async function ensureDir(dir) {
+  await fs.mkdir(dir, { recursive: true });
 }
 
 async function savePaymentScreenshot(dataUrl, userId) {
@@ -47,12 +55,41 @@ async function savePaymentScreenshot(dataUrl, userId) {
     throw new AppError('Payment screenshot must be under 5MB', 400, 'IMAGE_TOO_LARGE');
   }
 
-  await ensureUploadsDir();
-  const filename = `${userId}-${Date.now()}.${ext}`;
-  const filePath = path.join(uploadsDir, filename);
-  await fs.writeFile(filePath, buffer);
+  await ensureDir(paymentsDir);
+  const filename = `${userId}-payment-${Date.now()}.${ext}`;
+  await fs.writeFile(path.join(paymentsDir, filename), buffer);
 
   return `/uploads/payments/${filename}`;
+}
+
+async function saveCvPdf(dataUrl, userId) {
+  const match = /^data:application\/pdf;base64,(.+)$/i.exec(dataUrl);
+  if (!match) {
+    throw new AppError('CV must be uploaded as a PDF file', 400, 'INVALID_PDF');
+  }
+
+  const buffer = Buffer.from(match[1], 'base64');
+
+  if (buffer.length > 5 * 1024 * 1024) {
+    throw new AppError('CV must be under 5MB', 400, 'PDF_TOO_LARGE');
+  }
+
+  const header = buffer.subarray(0, 4).toString('utf8');
+  if (!header.startsWith('%PDF')) {
+    throw new AppError('CV must be a valid PDF file', 400, 'INVALID_PDF');
+  }
+
+  await ensureDir(cvsDir);
+  const filename = `${userId}-cv-${Date.now()}.pdf`;
+  await fs.writeFile(path.join(cvsDir, filename), buffer);
+
+  return `/uploads/cvs/${filename}`;
+}
+
+function normalizeCnic(value) {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length !== 13) return value.trim();
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
 }
 
 export function assertPortalApproved(user) {
@@ -68,7 +105,19 @@ export async function getMyPortalAccess(userId) {
   return mapApplicationUser(user);
 }
 
-export async function submitPortalAccess(userId, { postingId, notes, paymentScreenshot }) {
+export async function submitPortalAccess(userId, payload) {
+  const {
+    postingId,
+    fullName,
+    fatherName,
+    institute,
+    cnic,
+    contactNumber,
+    notes,
+    cvPdf,
+    paymentScreenshot,
+  } = payload;
+
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   if (user.role !== ROLES.STUDENT) {
@@ -84,12 +133,21 @@ export async function submitPortalAccess(userId, { postingId, notes, paymentScre
   const posting = await InternshipPosting.findById(postingId);
   if (!posting) throw new AppError('Internship not found', 404, 'POSTING_NOT_FOUND');
 
-  const screenshotPath = await savePaymentScreenshot(paymentScreenshot, userId);
+  const [cvPath, screenshotPath] = await Promise.all([
+    saveCvPdf(cvPdf, userId),
+    savePaymentScreenshot(paymentScreenshot, userId),
+  ]);
 
   user.portalAccess = {
     status: 'pending',
     postingId: posting._id,
     internshipTitle: posting.title,
+    fullName: fullName.trim(),
+    fatherName: fatherName.trim(),
+    institute: institute.trim(),
+    cnic: normalizeCnic(cnic),
+    contactNumber: contactNumber.trim(),
+    cvPdf: cvPath,
     paymentScreenshot: screenshotPath,
     notes: notes?.trim() || '',
     submittedAt: new Date(),

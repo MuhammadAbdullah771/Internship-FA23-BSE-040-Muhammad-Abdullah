@@ -9,7 +9,7 @@ import { useAppPaths } from '../../hooks/useAppPaths';
 import { clerkAppearance } from '../../config/clerk';
 
 export default function Navbar({ onMenuClick, searchPlaceholder = 'Search...', breadcrumbs }) {
-  const { isSuperadmin } = useAuth();
+  const { isSuperadmin, user } = useAuth();
   const paths = useAppPaths();
   return (
     <header className={cn(
@@ -61,7 +61,21 @@ export default function Navbar({ onMenuClick, searchPlaceholder = 'Search...', b
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
           </Link>
-          <UserButton appearance={clerkAppearance} />
+          {isSuperadmin ? (
+            <Link
+              to={paths.PROFILE}
+              className="flex items-center gap-2 p-1 rounded-xl transition-colors hover:bg-slate-800"
+              aria-label="Admin profile"
+            >
+              <img
+                src={user?.avatar}
+                alt=""
+                className="w-8 h-8 rounded-full border border-slate-700 object-cover"
+              />
+            </Link>
+          ) : (
+            <UserButton appearance={clerkAppearance} />
+          )}
         </div>
       </div>
     </header>

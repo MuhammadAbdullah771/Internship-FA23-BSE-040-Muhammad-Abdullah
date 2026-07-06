@@ -42,6 +42,13 @@ const taskSchema = new mongoose.Schema(
     },
     attachments: { type: Number, default: 0 },
     comments: { type: Number, default: 0 },
+    submission: {
+      githubLink: { type: String, default: '', trim: true },
+      liveUrl: { type: String, default: '', trim: true },
+      comments: { type: String, default: '', maxlength: 2000 },
+      status: { type: String, enum: ['draft', 'submitted'], default: 'draft' },
+      submittedAt: { type: Date, default: null },
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

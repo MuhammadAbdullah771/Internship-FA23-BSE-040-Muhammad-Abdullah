@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, RefreshCw, Image as ImageIcon, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -10,6 +10,15 @@ import {
   fetchPendingPortalApplications,
   reviewPortalApplication,
 } from '../services/portalAccessService';
+
+function Detail({ label, value }) {
+  if (!value) return null;
+  return (
+    <p className="text-sm text-slate-300">
+      <span className="text-slate-500">{label}:</span> {value}
+    </p>
+  );
+}
 
 export default function PortalApprovals() {
   const [applications, setApplications] = useState([]);
@@ -53,7 +62,7 @@ export default function PortalApprovals() {
         <div>
           <h1 className="text-2xl font-bold text-white">Portal Access Approvals</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Review internship selections and payment screenshots before granting portal access.
+            Review student applications, CVs, and payment screenshots before granting portal access.
           </p>
         </div>
         <Button variant="outline" onClick={loadApplications} className="border-slate-700 text-slate-200">
@@ -80,13 +89,15 @@ export default function PortalApprovals() {
               transition={{ delay: index * 0.04 }}
             >
               <Card className="bg-slate-800/60 border-slate-700 p-5">
-                <div className="flex flex-col lg:flex-row gap-5 lg:items-start lg:justify-between">
-                  <div className="flex gap-4">
+                <div className="flex flex-col xl:flex-row gap-5 xl:items-start xl:justify-between">
+                  <div className="flex gap-4 min-w-0">
                     <Avatar src={app.avatar} name={app.name} size="lg" />
-                    <div>
-                      <h3 className="font-semibold text-white">{app.name}</h3>
+                    <div className="min-w-0 space-y-1">
+                      <h3 className="font-semibold text-white">
+                        {app.portalAccess?.fullName || app.name}
+                      </h3>
                       <p className="text-sm text-slate-400">{app.email}</p>
-                      <div className="flex flex-wrap gap-2 mt-3">
+                      <div className="flex flex-wrap gap-2 mt-2">
                         <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
                           {app.portalAccess?.internshipTitle || 'Internship'}
                         </Badge>
@@ -94,13 +105,30 @@ export default function PortalApprovals() {
                           Pending
                         </Badge>
                       </div>
+                      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1 mt-3">
+                        <Detail label="Father" value={app.portalAccess?.fatherName} />
+                        <Detail label="Institute" value={app.portalAccess?.institute} />
+                        <Detail label="CNIC" value={app.portalAccess?.cnic} />
+                        <Detail label="Contact" value={app.portalAccess?.contactNumber} />
+                      </div>
                       {app.portalAccess?.notes && (
-                        <p className="text-sm text-slate-300 mt-3">{app.portalAccess.notes}</p>
+                        <p className="text-sm text-slate-300 mt-2">{app.portalAccess.notes}</p>
                       )}
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                    {app.portalAccess?.cvPdf && (
+                      <a
+                        href={app.portalAccess.cvPdf}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-600 text-slate-200 text-sm hover:bg-slate-700"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View CV
+                      </a>
+                    )}
                     {app.portalAccess?.paymentScreenshot && (
                       <a
                         href={app.portalAccess.paymentScreenshot}
