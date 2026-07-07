@@ -1,11 +1,23 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, Clock, Users, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Clock, Users, ArrowRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { INTERNSHIP_POSTINGS } from '../../constants/landingData';
 import { ROUTES } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
+import { fadeUp, scaleIn, staggerContainer, viewportOnce, softHoverLift, softTap } from '../../utils/landingMotion';
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24, scale: 0.96 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.45, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] },
+  }),
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
+};
 
 export default function InternshipPostings() {
   const [filter, setFilter] = useState('all');
@@ -24,103 +36,150 @@ export default function InternshipPostings() {
   };
 
   return (
-    <section id="internships" className="py-16 lg:py-24 bg-white scroll-mt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-full">
-              Trending
-            </span>
-            <span className="text-sm text-gray-500">Explore Internship Opportunities</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-gray-900 leading-tight">
-            Your Dream Internship is Just One{' '}
-            <span className="text-emerald-600">Click Away!</span>
-          </h2>
-          <p className="mt-4 text-gray-500 max-w-2xl mx-auto">
+    <section id="internships" className="py-20 lg:py-28 relative scroll-mt-20">
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-emerald-50/20 to-white pointer-events-none" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOnce}
+          className="text-center mb-14"
+        >
+          <motion.div variants={fadeUp} custom={0} className="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span className="text-sm font-semibold text-emerald-700">Explore Internship Opportunities</span>
+          </motion.div>
+          <motion.h2 variants={fadeUp} custom={1} className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-slate-900 leading-tight tracking-tight">
+            Your Dream Internship is One{' '}
+            <span className="text-gradient">Click Away</span>
+          </motion.h2>
+          <motion.p variants={fadeUp} custom={2} className="mt-4 text-slate-500 max-w-2xl mx-auto text-[15px]">
             Choose from 10+ in-demand tech tracks and start building real-world skills today.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
-        <div className="flex justify-center gap-2 mb-10">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={viewportOnce}
+          className="flex justify-center gap-2 mb-12"
+        >
           {['all', 'trending'].map((f) => (
             <button
               key={f}
+              type="button"
               onClick={() => setFilter(f)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-colors capitalize ${
+              className={`relative px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 capitalize ${
                 filter === f
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'text-white shadow-lg shadow-emerald-500/25'
+                  : 'bg-white/80 text-slate-600 hover:bg-white border border-slate-200/60'
               }`}
             >
-              {f === 'all' ? 'All Tracks' : 'Trending'}
+              {filter === f && (
+                <motion.span
+                  layoutId="filterPill"
+                  className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-500 rounded-full"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{f === 'all' ? 'All Tracks' : 'Trending'}</span>
             </button>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filtered.map((posting, i) => (
-            <motion.article
-              key={posting.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-              className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:border-emerald-100 transition-all duration-300"
-            >
-              <div className="relative h-40 overflow-hidden">
-                <img
-                  src={posting.image}
-                  alt={posting.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                {posting.trending && (
-                  <span className="absolute top-3 left-3 px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-bold uppercase rounded-full">
-                    Trending
-                  </span>
-                )}
-                <span className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 text-gray-600 text-[10px] font-semibold rounded-full">
-                  {posting.level}
-                </span>
-              </div>
-              <div className="p-5">
-                <h3 className="font-bold text-gray-900 text-lg mb-1">{posting.title}</h3>
-                <p className="text-sm text-gray-400 mb-3">{posting.company}</p>
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {posting.tags.map((tag) => (
-                    <span key={tag} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-medium rounded">
-                      {tag}
-                    </span>
-                  ))}
+        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((posting, i) => (
+              <motion.article
+                key={posting.id}
+                layout
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                custom={i}
+                whileHover={softHoverLift}
+                className="group glass-card rounded-3xl overflow-hidden border border-slate-200/60 hover:shadow-premium-lg transition-shadow duration-300"
+              >
+                <div className="relative h-44 overflow-hidden">
+                  <img
+                    src={posting.image}
+                    alt={posting.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {posting.trending && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.2 + i * 0.05, type: 'spring' }}
+                      className="absolute top-3 left-3 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-[10px] font-bold uppercase rounded-full shadow-md"
+                    >
+                      Trending
+                    </motion.span>
+                  )}
+                  <motion.span
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.16 + i * 0.04 }}
+                    className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-slate-600 text-[10px] font-bold rounded-full"
+                  >
+                    {posting.level}
+                  </motion.span>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{posting.duration}</span>
-                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{posting.type}</span>
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{posting.spots} spots</span>
+                <div className="p-5">
+                  <h3 className="font-extrabold text-slate-900 text-lg mb-1 group-hover:text-emerald-700 transition-colors">
+                    {posting.title}
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-3 font-medium">{posting.company}</p>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {posting.tags.map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-md ring-1 ring-emerald-100">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 mb-4 font-medium">
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{posting.duration}</span>
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{posting.type}</span>
+                    <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{posting.spots}</span>
+                  </div>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.015, transition: { duration: 0.2 } }}
+                    whileTap={softTap}
+                    onClick={() => handleApply(posting.title)}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-emerald-500/20 group-hover:shadow-lg group-hover:shadow-emerald-500/30"
+                  >
+                    Apply Now
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </motion.button>
                 </div>
-                <button
-                  onClick={() => handleApply(posting.title)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  Apply Now
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.article>
-          ))}
-        </div>
+              </motion.article>
+            ))}
+          </AnimatePresence>
+        </motion.div>
 
         {!isAuthenticated && (
-          <div className="mt-12 text-center space-y-3">
-            <p className="text-gray-500">Ready to start your internship journey?</p>
-            <Link
-              to={ROUTES.STUDENT.LOGIN}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors"
-            >
-              Join Internship Portal
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={viewportOnce}
+            variants={scaleIn}
+            className="mt-16 text-center"
+          >
+            <div className="inline-block glass-card rounded-3xl px-10 py-8 border border-emerald-100/60">
+              <p className="text-slate-600 font-medium mb-4">Ready to start your internship journey?</p>
+              <Link
+                to={ROUTES.STUDENT.LOGIN}
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/25 hover:-translate-y-0.5"
+              >
+                Join Internship Portal
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </motion.div>
         )}
       </div>
     </section>

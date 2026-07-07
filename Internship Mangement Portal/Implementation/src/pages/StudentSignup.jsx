@@ -1,10 +1,23 @@
 import { SignUp } from '@clerk/clerk-react';
+import { Navigate } from 'react-router-dom';
 import { Briefcase } from 'lucide-react';
 import AuthLayout from '../components/auth/AuthLayout';
 import { clerkAppearance } from '../config/clerk';
+import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../constants';
+import { AuthLoadingScreen } from '../components/common/ProtectedRoute';
 
 export default function StudentSignup() {
+  const { isClerkSignedIn, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <AuthLoadingScreen message="Loading sign up..." />;
+  }
+
+  if (isClerkSignedIn) {
+    return <Navigate to={ROUTES.STUDENT.AUTH_CALLBACK} replace />;
+  }
+
   return (
     <AuthLayout
       variant="student"
@@ -31,8 +44,8 @@ export default function StudentSignup() {
           routing="path"
           path={ROUTES.STUDENT.SIGNUP}
           signInUrl={ROUTES.STUDENT.LOGIN}
-          forceRedirectUrl={ROUTES.STUDENT.ONBOARDING}
-          fallbackRedirectUrl={ROUTES.STUDENT.ONBOARDING}
+          forceRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+          fallbackRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
           appearance={clerkAppearance}
         />
       </div>

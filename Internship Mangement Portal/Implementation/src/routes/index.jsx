@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import { PORTAL_ACCESS_STATUS, ROLES, ROUTES } from '../constants';
 import DashboardLayout from '../layouts/DashboardLayout';
 import LandingLayout from '../layouts/LandingLayout';
@@ -9,6 +10,7 @@ import Landing from '../pages/Landing';
 import InternshipPortal from '../pages/InternshipPortal';
 import StudentLogin from '../pages/StudentLogin';
 import StudentSignup from '../pages/StudentSignup';
+import StudentAuthCallback from '../pages/StudentAuthCallback';
 import StudentOnboarding from '../pages/StudentOnboarding';
 import StudentPendingApproval from '../pages/StudentPendingApproval';
 import SuperadminLogin from '../pages/SuperadminLogin';
@@ -42,9 +44,30 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      <Route
+        path={`${ROUTES.STUDENT.LOGIN}/sso-callback`}
+        element={(
+          <AuthenticateWithRedirectCallback
+            signInForceRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+            signUpForceRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+          />
+        )}
+      />
+      <Route
+        path={`${ROUTES.STUDENT.SIGNUP}/sso-callback`}
+        element={(
+          <AuthenticateWithRedirectCallback
+            signInForceRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+            signUpForceRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+          />
+        )}
+      />
+
+      <Route path={ROUTES.STUDENT.AUTH_CALLBACK} element={<StudentAuthCallback />} />
+
       <Route element={<PublicRoute />}>
-        <Route path={ROUTES.STUDENT.LOGIN} element={<StudentLogin />} />
-        <Route path={ROUTES.STUDENT.SIGNUP} element={<StudentSignup />} />
+        <Route path={`${ROUTES.STUDENT.LOGIN}/*`} element={<StudentLogin />} />
+        <Route path={`${ROUTES.STUDENT.SIGNUP}/*`} element={<StudentSignup />} />
         <Route path={ROUTES.STUDENT.FORGOT_PASSWORD} element={<ForgotPassword />} />
       </Route>
 
@@ -57,7 +80,7 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<PublicRoute redirectRoles={[ROLES.SUPERADMIN]} />}>
-        <Route path={ROUTES.SUPERADMIN.LOGIN} element={<SuperadminLogin />} />
+        <Route path={`${ROUTES.SUPERADMIN.LOGIN}/*`} element={<SuperadminLogin />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={[ROLES.STUDENT]} requirePortalApproval loginPath={ROUTES.STUDENT.LOGIN} />}>

@@ -1,14 +1,18 @@
 import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Briefcase } from 'lucide-react';
 import Button from '../ui/Button';
 import { clerkAppearance } from '../../config/clerk';
 import { useAuth } from '../../context/AuthContext';
-import { ROUTES } from '../../constants';
+import { getStudentAccessPath, ROUTES } from '../../constants';
 
 export default function InternshipLoginPanel() {
   const navigate = useNavigate();
-  const { isAuthenticated, isStudent, user } = useAuth();
+  const { isAuthenticated, isStudent, user, isClerkSignedIn, isLoading } = useAuth();
+
+  if (isClerkSignedIn && !isAuthenticated) {
+    return <Navigate to={ROUTES.STUDENT.AUTH_CALLBACK} replace />;
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-premium p-6 lg:p-8 h-fit sticky top-24">
@@ -43,6 +47,8 @@ export default function InternshipLoginPanel() {
               </Button>
             </div>
           </>
+        ) : isLoading ? (
+          <p className="text-sm text-gray-600">Connecting your account...</p>
         ) : (
           <p className="text-sm text-gray-600">You are signed in.</p>
         )}
@@ -55,8 +61,8 @@ export default function InternshipLoginPanel() {
         <SignIn
           routing="hash"
           signUpUrl={ROUTES.STUDENT.SIGNUP}
-          forceRedirectUrl={ROUTES.STUDENT.ONBOARDING}
-          fallbackRedirectUrl={ROUTES.STUDENT.ONBOARDING}
+          forceRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+          fallbackRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
           appearance={clerkAppearance}
         />
       </SignedOut>

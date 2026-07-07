@@ -44,6 +44,13 @@ export function createApp() {
   app.use('/api/students', studentRoutes);
   app.use('/uploads', express.static(path.join(env.rootDir, 'server/uploads')));
 
+  if (env.isDev) {
+    app.get(/^\/(?!api|uploads).*/, (req, res) => {
+      const target = new URL(req.originalUrl, env.clientUrl).toString();
+      res.redirect(302, target);
+    });
+  }
+
   if (env.isProd) {
     const distPath = path.join(env.rootDir, 'dist');
     app.use(express.static(distPath));

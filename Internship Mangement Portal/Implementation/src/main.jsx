@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
 import ClerkSetupRequired from './pages/ClerkSetupRequired';
 import { clerkPublishableKey, isClerkConfigured } from './config/clerk';
+import { ROUTES } from './constants';
 import './styles/index.css';
 
 const root = createRoot(document.getElementById('root'));
@@ -17,7 +18,12 @@ if (!isClerkConfigured()) {
 } else {
   root.render(
     <StrictMode>
-      <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
+      <ClerkProvider
+        publishableKey={clerkPublishableKey}
+        afterSignOutUrl={ROUTES.LANDING}
+        signInFallbackRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+        signUpFallbackRedirectUrl={ROUTES.STUDENT.AUTH_CALLBACK}
+      >
         <App />
       </ClerkProvider>
     </StrictMode>,

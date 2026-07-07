@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Pencil, Mail, Save } from 'lucide-react';
+import { Mail, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -48,7 +47,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <Card className="relative overflow-visible">
+      <Card glass className="relative overflow-visible">
         <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="relative -mt-2">
             <div className="w-20 h-20 rounded-2xl overflow-hidden">
@@ -60,16 +59,16 @@ export default function Settings() {
             </div>
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">{user?.name || 'Student'}</h1>
-            <p className="text-gray-500 mt-0.5">{portal.internshipTitle || 'Internship Student'}</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{user?.name || 'Student'}</h1>
+            <p className="text-slate-500 mt-0.5 font-medium">{portal.internshipTitle || 'Internship Student'}</p>
             <Badge variant={statusConfig.variant} className="mt-2">{statusConfig.label}</Badge>
           </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h2>
+        <Card glass className="lg:col-span-2">
+          <h2 className="text-lg font-bold text-slate-900 mb-6">Personal Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Input
               label="First Name"
@@ -119,8 +118,8 @@ export default function Settings() {
         </Card>
 
         <div className="space-y-6">
-          <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Internship Details</h3>
+          <Card glass>
+            <h3 className="font-bold text-slate-900 mb-4">Internship Details</h3>
             <div className="space-y-3 text-sm">
               <div>
                 <p className="text-xs text-gray-400">Track</p>
@@ -152,8 +151,8 @@ export default function Settings() {
           </Card>
 
           {(portal.cvPdf || portal.paymentScreenshot) && (
-            <Card>
-              <h3 className="font-semibold text-gray-900 mb-4">Onboarding Documents</h3>
+            <Card glass>
+              <h3 className="font-bold text-slate-900 mb-4">Onboarding Documents</h3>
               <div className="space-y-2 text-sm">
                 {portal.cvPdf && (
                   <a href={portal.cvPdf} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline block">

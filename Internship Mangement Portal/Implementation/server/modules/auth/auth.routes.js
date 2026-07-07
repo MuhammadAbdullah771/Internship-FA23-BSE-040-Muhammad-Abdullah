@@ -10,7 +10,7 @@ import {
   updateProfileSchema,
 } from './auth.validation.js';
 import { validate } from '../../middleware/validate.js';
-import { authenticate, authorize } from '../../middleware/authenticate.js';
+import { authenticate } from '../../middleware/authenticate.js';
 
 const router = Router();
 
@@ -26,15 +26,14 @@ const authLimiter = rateLimit({
   },
 });
 
-router.use(authLimiter);
+router.post('/register', authLimiter, validate(registerSchema), authController.register);
+router.post('/login', authLimiter, validate(loginSchema), authController.login);
+router.post('/refresh', authLimiter, validate(refreshSchema), authController.refresh);
+router.post('/logout', authLimiter, validate(refreshSchema), authController.logout);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 
-router.post('/register', validate(registerSchema), authController.register);
-router.post('/login', validate(loginSchema), authController.login);
-router.post('/refresh', validate(refreshSchema), authController.refresh);
-router.post('/logout', validate(refreshSchema), authController.logout);
 router.get('/me', authenticate, authController.me);
 router.patch('/me', authenticate, validate(updateProfileSchema), authController.updateMe);
-router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
-router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
 export default router;

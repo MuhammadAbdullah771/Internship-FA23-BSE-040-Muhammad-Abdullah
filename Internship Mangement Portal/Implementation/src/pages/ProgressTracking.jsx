@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import PageHeader from '../components/common/PageHeader';
 import { Check, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
@@ -46,7 +46,7 @@ export default function ProgressTracking() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Progress Tracking</h1>
-        <Card>
+        <Card glass hover>
           <p className="text-gray-500 text-center py-12">Use the admin dashboard to view intern progress.</p>
         </Card>
       </div>
@@ -89,13 +89,14 @@ export default function ProgressTracking() {
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Progress Tracking</h1>
-        <p className="text-gray-500 mt-1">Monitor your internship milestones and task completion.</p>
-      </motion.div>
+      <PageHeader
+        title="Progress Tracking"
+        subtitle="Monitor your internship milestones and task completion."
+        eyebrow="Performance"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card glass hover>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Overall Progress</h2>
             <Link to={paths.TASKS} className="text-sm text-emerald-600 hover:text-emerald-500 flex items-center gap-1">
@@ -116,7 +117,7 @@ export default function ProgressTracking() {
           </div>
         </Card>
 
-        <Card>
+        <Card glass hover>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Task Breakdown</h2>
           <div className="space-y-4">
             {tasksByStatus.map((item) => (

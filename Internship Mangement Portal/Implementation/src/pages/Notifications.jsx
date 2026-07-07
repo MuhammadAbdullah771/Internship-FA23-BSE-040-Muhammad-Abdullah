@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import PageHeader from '../components/common/PageHeader';
 import { Clock, CheckSquare, MessageCircle, Info, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
@@ -128,10 +128,11 @@ export default function Notifications() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Notifications</h1>
-        <p className="text-gray-500 mt-1">Alerts about tasks, deadlines, and applications.</p>
-      </motion.div>
+      <PageHeader
+        title="Notifications"
+        subtitle="Alerts about tasks, deadlines, and applications."
+        eyebrow="Inbox"
+      />
 
       {groups.map((group) => (
         <div key={group}>

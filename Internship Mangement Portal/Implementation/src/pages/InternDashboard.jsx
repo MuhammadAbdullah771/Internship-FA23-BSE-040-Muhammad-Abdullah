@@ -136,24 +136,30 @@ export default function InternDashboard() {
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="bg-gradient-to-r from-white via-white to-emerald-50/60 relative overflow-hidden border-emerald-100/60">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-          <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <Avatar src={user?.avatar} name={fullName} size="lg" />
+        <Card glass className="relative overflow-hidden border-0 !p-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/8 via-transparent to-teal-500/10 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-400/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
+          <div className="relative p-6 lg:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-start gap-5">
+              <div className="relative">
+                <Avatar src={user?.avatar} name={fullName} size="lg" />
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <CheckCircle className="w-3 h-3 text-white" />
+                </span>
+              </div>
               <div>
-                <p className="text-sm text-emerald-600 font-medium mb-0.5">{cohort}</p>
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                  Good morning, {firstName}!
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-[0.12em] mb-1">{cohort}</p>
+                <h1 className="text-2xl lg:text-4xl font-extrabold tracking-tight text-slate-900">
+                  Good morning, <span className="text-gradient">{firstName}</span>
                 </h1>
-                <p className="text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                  <BookOpen className="w-4 h-4" />
-                  {trackTitle} Track
+                <p className="text-slate-500 mt-2 flex items-center gap-2 flex-wrap text-[15px]">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/60 border border-slate-200/60 text-sm font-medium">
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                    {trackTitle}
+                  </span>
                   {dashboard?.institute && (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      {dashboard.institute}
-                    </>
+                    <span className="text-slate-400">· {dashboard.institute}</span>
                   )}
                 </p>
               </div>
@@ -195,13 +201,13 @@ export default function InternDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card>
+          <Card glass hover>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Current Tasks</h2>
-                <p className="text-xs text-gray-500">Your active assignments</p>
+                <p className="section-label mb-1">Assignments</p>
+                <h2 className="text-lg font-bold text-slate-900">Current Tasks</h2>
               </div>
-              <Link to={paths.TASKS} className="text-sm font-medium text-emerald-600 hover:text-emerald-500 flex items-center gap-1">
+              <Link to={paths.TASKS} className="text-sm font-semibold text-emerald-600 hover:text-emerald-500 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-emerald-50/80 transition-colors">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -213,7 +219,7 @@ export default function InternDashboard() {
                   <Link
                     key={task.id}
                     to={paths.taskDetail(task.id)}
-                    className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group"
+                    className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200/60 bg-white/50 hover:bg-white hover:border-emerald-200/60 hover:shadow-md transition-all duration-200 group"
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                       task.status === 'done' ? 'bg-emerald-100' : task.status === 'in_progress' ? 'bg-emerald-50' : 'bg-gray-100'
@@ -255,8 +261,8 @@ export default function InternDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
         >
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Overall Progress</h2>
+          <Card glass>
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Overall Progress</h2>
             <DonutChart value={progress} size={200} />
             <p className="text-center text-sm text-gray-500 mt-2">of internship complete</p>
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-2 text-sm">
@@ -319,7 +325,8 @@ export default function InternDashboard() {
           </Link>
 
           <Link to={paths.CERTIFICATE}>
-            <Card className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white border-0 hover:shadow-premium-lg transition-shadow cursor-pointer">
+            <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 text-white border-0 hover:shadow-glow-emerald transition-all duration-300 cursor-pointer !p-6">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-40" />
               <div className="flex items-center gap-3 mb-3">
                 <Award className="w-8 h-8 opacity-90" />
                 <div>

@@ -18,11 +18,20 @@ function isClerkConfigured() {
 }
 
 const clerkClient = isClerkConfigured()
-  ? createClerkClient({ secretKey: env.clerk.secretKey })
+  ? createClerkClient({
+    secretKey: env.clerk.secretKey,
+    publishableKey: env.clerk.publishableKey,
+  })
   : null;
 
 async function authenticateWithClerk(token) {
-  const payload = await verifyToken(token, { secretKey: env.clerk.secretKey });
+  const verifyOptions = { secretKey: env.clerk.secretKey };
+
+  if (env.isProd) {
+    verifyOptions.authorizedParties = [...new Set([env.clientUrl, ...env.corsOrigin])];
+  }
+
+  const payload = await verifyToken(token, verifyOptions);
   const clerkUserId = payload.sub;
 
   let user = await User.findOne({ clerkId: clerkUserId });
@@ -72,8 +81,20 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   if (isClerkConfigured()) {
     try {
       user = await authenticateWithClerk(token);
-    } catch {
-      user = await authenticateWithJwt(token);
+    } catch (clerkError) {
+      if (clerkError instanceof AppError) {
+        throw clerkError;
+      }
+
+      if (env.isDev) {
+        console.error('[auth] Clerk token verification failed:', clerkError?.message || clerkError);
+      }
+
+      try {
+        user = await authenticateWithJwt(token);
+      } catch {
+        throw new AppError('Invalid or expired token', 401, 'UNAUTHORIZED');
+      }
     }
   } else {
     user = await authenticateWithJwt(token);

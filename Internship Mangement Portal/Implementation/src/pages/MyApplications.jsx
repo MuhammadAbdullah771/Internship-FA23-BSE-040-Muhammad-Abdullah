@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, RefreshCw, Clock, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PageHeader from '../components/common/PageHeader';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -47,20 +48,21 @@ export default function MyApplications() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">My Applications</h1>
-          <p className="text-gray-500 mt-1">Track the status of your internship applications.</p>
-        </motion.div>
-        <div className="flex gap-3">
-          <Button variant="outline" icon={RefreshCw} onClick={loadApplications} disabled={loading}>
-            Refresh
-          </Button>
-          <Link to={ROUTES.STUDENT.PORTAL}>
-            <Button variant="purple" icon={Briefcase}>Browse Internships</Button>
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="My Applications"
+        subtitle="Track the status of your internship applications in one place."
+        eyebrow="Internships"
+        actions={(
+          <>
+            <Button variant="outline" icon={RefreshCw} onClick={loadApplications} disabled={loading}>
+              Refresh
+            </Button>
+            <Link to={ROUTES.STUDENT.PORTAL}>
+              <Button variant="purple" icon={Briefcase}>Browse Internships</Button>
+            </Link>
+          </>
+        )}
+      />
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -91,7 +93,7 @@ export default function MyApplications() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Card className="!p-0 overflow-hidden">
+                <Card className="!p-0 overflow-hidden hover:shadow-premium-lg transition-all duration-300 border-slate-200/60" hover>
                   <div className="flex flex-col sm:flex-row">
                     {posting?.image && (
                       <div className="sm:w-48 h-36 sm:h-auto shrink-0">

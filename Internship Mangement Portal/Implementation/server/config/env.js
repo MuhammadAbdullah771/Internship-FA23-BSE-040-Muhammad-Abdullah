@@ -13,6 +13,17 @@ function requireEnv(key, fallback) {
   return value;
 }
 
+const PLACEHOLDER_PATTERN = /your_publishable_key|your_secret_key|replace_me/i;
+
+function resolveClerkKey(...candidates) {
+  for (const value of candidates) {
+    if (value && !PLACEHOLDER_PATTERN.test(value)) {
+      return value;
+    }
+  }
+  return '';
+}
+
 export const env = {
   port: Number(process.env.PORT) || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -32,7 +43,10 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   clerk: {
-    secretKey: process.env.CLERK_SECRET_KEY || '',
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || '',
+    secretKey: resolveClerkKey(process.env.CLERK_SECRET_KEY),
+    publishableKey: resolveClerkKey(
+      process.env.CLERK_PUBLISHABLE_KEY,
+      process.env.VITE_CLERK_PUBLISHABLE_KEY,
+    ),
   },
 };

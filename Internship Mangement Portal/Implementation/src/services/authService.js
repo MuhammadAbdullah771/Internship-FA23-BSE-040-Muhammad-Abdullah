@@ -25,9 +25,21 @@ export async function updateProfile(payload) {
   }
 }
 
-export async function fetchCurrentUser() {
-  const { data } = await api.get('/auth/me');
-  return mapUserDto(data.data.user);
+export async function fetchCurrentUser(token) {
+  const config = token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : undefined;
+
+  try {
+    const { data } = await api.get('/auth/me', config);
+    return mapUserDto(data.data.user);
+  } catch (error) {
+    const msg = error.response?.data?.message
+      || error.response?.statusText
+      || error.message
+      || 'Failed to load profile';
+    throw new Error(msg);
+  }
 }
 
 export async function loginWithPassword({ email, password, expectedRole }) {

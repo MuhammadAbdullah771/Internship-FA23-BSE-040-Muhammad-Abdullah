@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import PageHeader from '../components/common/PageHeader';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import CertificatePanel from '../components/student/CertificatePanel';
@@ -47,12 +47,13 @@ export default function Certificate() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">My Certificate</h1>
-        <p className="text-gray-500 mt-1">View, verify, and download your internship completion certificate.</p>
-      </motion.div>
+      <PageHeader
+        title="My Certificate"
+        subtitle="View, verify, and download your internship completion certificate."
+        eyebrow="Achievement"
+      />
 
-      <Card>
+      <Card glass>
         <CertificatePanel
           studentName={user?.name || 'Student'}
           certification={certificationData}

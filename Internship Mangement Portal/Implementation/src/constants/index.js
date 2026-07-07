@@ -21,6 +21,7 @@ export const ROUTES = {
     PORTAL: STUDENT_BASE,
     LOGIN: `${STUDENT_BASE}/login`,
     SIGNUP: `${STUDENT_BASE}/signup`,
+    AUTH_CALLBACK: `${STUDENT_BASE}/auth/callback`,
     FORGOT_PASSWORD: `${STUDENT_BASE}/forgot-password`,
     ONBOARDING: `${STUDENT_BASE}/onboarding`,
     PENDING_APPROVAL: `${STUDENT_BASE}/pending-approval`,

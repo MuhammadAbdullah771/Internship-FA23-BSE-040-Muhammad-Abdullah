@@ -8,12 +8,12 @@ import {
   ROLES,
 } from '../../constants';
 
-function AuthLoadingScreen() {
+export function AuthLoadingScreen({ message = 'Loading session...' }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-3">
         <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-500">Loading session...</p>
+        <p className="text-sm text-gray-500">{message}</p>
       </div>
     </div>
   );
@@ -24,12 +24,17 @@ export function ProtectedRoute({
   loginPath = ROUTES.STUDENT.LOGIN,
   requirePortalApproval = false,
 }) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, isClerkSignedIn } = useAuth();
   const location = useLocation();
 
-  if (isLoading) return <AuthLoadingScreen />;
+  if (isLoading) {
+    return <AuthLoadingScreen />;
+  }
 
   if (!isAuthenticated) {
+    if (isClerkSignedIn) {
+      return <Navigate to={ROUTES.STUDENT.AUTH_CALLBACK} replace />;
+    }
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
@@ -45,13 +50,22 @@ export function ProtectedRoute({
 }
 
 export function StudentAccessRoute({ allowedStatuses }) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, isClerkSignedIn } = useAuth();
   const location = useLocation();
 
-  if (isLoading) return <AuthLoadingScreen />;
+  if (isLoading) {
+    return <AuthLoadingScreen />;
+  }
 
-  if (!isAuthenticated || user.role !== ROLES.STUDENT) {
+  if (!isAuthenticated) {
+    if (isClerkSignedIn) {
+      return <Navigate to={ROUTES.STUDENT.AUTH_CALLBACK} replace />;
+    }
     return <Navigate to={ROUTES.STUDENT.LOGIN} state={{ from: location }} replace />;
+  }
+
+  if (user.role !== ROLES.STUDENT) {
+    return <Navigate to={getHomePath(user.role)} replace />;
   }
 
   if (!allowedStatuses.includes(user.portalAccessStatus)) {
@@ -62,9 +76,15 @@ export function StudentAccessRoute({ allowedStatuses }) {
 }
 
 export function PublicRoute({ redirectIfAuth = true, redirectRoles }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, isClerkSignedIn } = useAuth();
 
-  if (isLoading) return <AuthLoadingScreen />;
+  if (isLoading) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (isClerkSignedIn && !isAuthenticated) {
+    return <Navigate to={ROUTES.STUDENT.AUTH_CALLBACK} replace />;
+  }
 
   if (redirectIfAuth && isAuthenticated) {
     if (redirectRoles && !redirectRoles.includes(user.role)) {

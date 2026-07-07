@@ -48,6 +48,7 @@ async function start() {
   console.log(`InternHub server [${mode}] → http://localhost:${env.port}`);
   if (env.isDev) {
     console.log(`React dev UI → ${env.clientUrl}`);
+    console.log(`Tip: open ${env.clientUrl} in your browser (port ${env.port} is API-only in dev).`);
   }
 }
 

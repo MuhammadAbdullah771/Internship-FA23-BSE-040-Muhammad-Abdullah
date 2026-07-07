@@ -20,6 +20,10 @@ export function setClerkTokenGetter(getter) {
 }
 
 api.interceptors.request.use(async (config) => {
+  if (config.headers.Authorization) {
+    return config;
+  }
+
   const jwt = getAccessToken();
   if (jwt) {
     config.headers.Authorization = `Bearer ${jwt}`;
@@ -36,7 +40,7 @@ api.interceptors.request.use(async (config) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   } catch {
-    // Clerk session not ready
+    // Clerk session not ready — do not attach a token
   }
 
   return config;
