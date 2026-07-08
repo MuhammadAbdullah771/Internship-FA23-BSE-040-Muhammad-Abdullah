@@ -62,6 +62,12 @@ const portalAccessSchema = new mongoose.Schema(
       maxlength: 1000,
       default: '',
     },
+    enrollmentStatus: {
+      type: String,
+      enum: ['none', 'active', 'completed'],
+      default: 'none',
+    },
+    enrollmentCompletedAt: Date,
     submittedAt: Date,
     reviewedAt: Date,
     reviewedBy: {

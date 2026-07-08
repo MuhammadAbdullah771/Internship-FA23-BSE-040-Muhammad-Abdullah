@@ -12,7 +12,18 @@ export function mapUserDto(data) {
     avatar: data.avatar,
     portalAccessStatus: data.portalAccessStatus,
     portalAccess: data.portalAccess,
+    displayName: data.displayName || data.name,
   };
+}
+
+export async function syncClerkAvatar() {
+  try {
+    const { data } = await api.post('/auth/me/sync-clerk-avatar');
+    return { success: true, user: mapUserDto(data.data.user) };
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Failed to sync Clerk photo';
+    return { success: false, error: msg };
+  }
 }
 
 export async function updateProfile(payload) {
@@ -43,16 +54,27 @@ export async function fetchCurrentUser(token) {
 }
 
 export async function loginWithPassword({ email, password, expectedRole }) {
-  const { data } = await api.post('/auth/login', { email, password, expectedRole });
-  setTokens({
-    accessToken: data.data.accessToken,
-    refreshToken: data.data.refreshToken,
-  });
-  return {
-    user: mapUserDto(data.data.user),
-    accessToken: data.data.accessToken,
-    refreshToken: data.data.refreshToken,
-  };
+  try {
+    const { data } = await api.post('/auth/login', {
+      email: email.toLowerCase().trim(),
+      password,
+      expectedRole,
+    });
+    setTokens({
+      accessToken: data.data.accessToken,
+      refreshToken: data.data.refreshToken,
+    });
+    return {
+      user: mapUserDto(data.data.user),
+      accessToken: data.data.accessToken,
+      refreshToken: data.data.refreshToken,
+    };
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Invalid email or password';
+    const err = new Error(msg);
+    err.response = error.response;
+    throw err;
+  }
 }
 
 export async function refreshStoredSession() {

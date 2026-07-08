@@ -69,7 +69,7 @@ export const ROUTES = {
 
 export const SUPERADMIN_NAV = [
   { label: 'Dashboard', path: ROUTES.SUPERADMIN.DASHBOARD, icon: 'LayoutDashboard' },
-  { label: 'Interns', path: ROUTES.SUPERADMIN.INTERNS, icon: 'Users' },
+  { label: 'Clerk Students', path: ROUTES.SUPERADMIN.INTERNS, icon: 'Users' },
   { label: 'Approvals', path: ROUTES.SUPERADMIN.APPROVALS, icon: 'UserCheck' },
   { label: 'Tasks', path: ROUTES.SUPERADMIN.TASKS, icon: 'ClipboardList' },
   { label: 'Reports', path: ROUTES.SUPERADMIN.REPORTS, icon: 'BarChart3' },
@@ -96,6 +96,16 @@ export function getHomePath(role) {
 export function getStudentAccessPath(user) {
   if (!user || user.role !== ROLES.STUDENT) return ROUTES.STUDENT.PORTAL;
 
+  const enrollmentStatus = user.portalAccess?.enrollmentStatus
+    || (user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED ? 'active' : 'none');
+
+  if (
+    user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
+    && enrollmentStatus === 'completed'
+  ) {
+    return ROUTES.STUDENT.ONBOARDING;
+  }
+
   switch (user.portalAccessStatus) {
     case PORTAL_ACCESS_STATUS.APPROVED:
       return ROUTES.STUDENT.PORTAL;
@@ -108,9 +118,19 @@ export function getStudentAccessPath(user) {
   }
 }
 
-export function isStudentPortalApproved(user) {
+export function canStudentReapply(user) {
   return user?.role === ROLES.STUDENT
-    && user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED;
+    && user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
+    && user.portalAccess?.enrollmentStatus === 'completed';
+}
+
+export function isStudentPortalApproved(user) {
+  const enrollmentStatus = user?.portalAccess?.enrollmentStatus
+    || (user?.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED ? 'active' : 'none');
+
+  return user?.role === ROLES.STUDENT
+    && user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
+    && enrollmentStatus === 'active';
 }
 
 export function getLoginPath(role) {

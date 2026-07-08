@@ -7,6 +7,15 @@ import { signAccessToken, signRefreshToken } from '../../utils/jwt.js';
 import { hashToken, generateResetToken } from '../../utils/tokens.js';
 import { toUserDTO } from '../../utils/userSerializer.js';
 import { env } from '../../config/env.js';
+import { createClerkClient } from '@clerk/backend';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { broadcastToRole, broadcastToUser } from '../events/eventBus.js';
+import { enrichPortalAccessPosting } from '../portal-access/portal-access.service.js';
+
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const avatarsDir = path.resolve(moduleDir, '../../uploads/avatars');
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RESET_TTL_MS = 60 * 60 * 1000;
@@ -15,11 +24,64 @@ function buildAvatar(email) {
   return `https://i.pravatar.cc/150?u=${encodeURIComponent(email)}`;
 }
 
+function getClerkClient() {
+  if (!env.clerk.secretKey?.startsWith('sk_')) return null;
+  return createClerkClient({
+    secretKey: env.clerk.secretKey,
+    publishableKey: env.clerk.publishableKey,
+  });
+}
+
+async function ensureAvatarDir() {
+  await fs.mkdir(avatarsDir, { recursive: true });
+}
+
+async function saveAvatarImage(dataUrl, userId) {
+  const match = /^data:image\/(png|jpe?g|webp);base64,(.+)$/i.exec(dataUrl);
+  if (!match) {
+    throw new AppError('Avatar must be a PNG, JPG, or WebP image', 400, 'INVALID_IMAGE');
+  }
+
+  const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+  const buffer = Buffer.from(match[2], 'base64');
+
+  if (buffer.length > 2 * 1024 * 1024) {
+    throw new AppError('Avatar must be under 2MB', 400, 'IMAGE_TOO_LARGE');
+  }
+
+  await ensureAvatarDir();
+  const filename = `${userId}-avatar-${Date.now()}.${ext}`;
+  await fs.writeFile(path.join(avatarsDir, filename), buffer);
+  return `/uploads/avatars/${filename}`;
+}
+
+export async function syncAvatarFromClerk(user) {
+  if (!user?.clerkId) return user;
+
+  const client = getClerkClient();
+  if (!client) return user;
+
+  const clerkUser = await client.users.getUser(user.clerkId);
+  if (clerkUser.imageUrl && clerkUser.imageUrl !== user.avatar) {
+    user.avatar = clerkUser.imageUrl;
+    await user.save();
+    broadcastToUser(user._id.toString(), 'profile:updated', { userId: user._id.toString() });
+  }
+
+  return user;
+}
+
 export async function syncClerkUser({ clerkId, email, firstName, lastName, imageUrl }) {
   const normalizedEmail = email.toLowerCase().trim();
 
   let user = await User.findOne({ clerkId });
-  if (user) return user;
+  if (user) {
+    if (imageUrl && imageUrl !== user.avatar) {
+      user.avatar = imageUrl;
+      await user.save();
+    }
+    return user;
+  }
 
   user = await User.findOne({ email: normalizedEmail });
   if (user) {
@@ -27,12 +89,13 @@ export async function syncClerkUser({ clerkId, email, firstName, lastName, image
       throw new AppError('Superadmin accounts use the admin login only', 403, 'SUPERADMIN_PASSWORD_ONLY');
     }
     user.clerkId = clerkId;
-    if (imageUrl && !user.avatar) user.avatar = imageUrl;
+    if (imageUrl) user.avatar = imageUrl;
     await user.save();
+    broadcastToRole(ROLES.SUPERADMIN, 'students:updated', { userId: user._id.toString() });
     return user;
   }
 
-  return User.create({
+  const created = await User.create({
     clerkId,
     email: normalizedEmail,
     firstName: firstName?.trim() || 'Student',
@@ -41,6 +104,8 @@ export async function syncClerkUser({ clerkId, email, firstName, lastName, image
     avatar: imageUrl || buildAvatar(normalizedEmail),
     portalAccess: { status: 'unsubmitted' },
   });
+  broadcastToRole(ROLES.SUPERADMIN, 'students:updated', { userId: created._id.toString() });
+  return created;
 }
 
 function parseDurationToMs(duration) {
@@ -91,7 +156,8 @@ export async function registerStudent({ firstName, lastName, email, password }) 
 }
 
 export async function login({ email, password, expectedRole }) {
-  const user = await User.findOne({ email }).select('+passwordHash');
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail }).select('+passwordHash');
   if (!user) {
     throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
@@ -138,11 +204,41 @@ export async function logout(refreshToken) {
 }
 
 export async function getProfile(userId) {
-  const user = await User.findById(userId);
+  let user = await User.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
-  return toUserDTO(user);
+
+  if (user.clerkId) {
+    user = await syncAvatarFromClerk(user);
+  }
+
+  await enrichPortalAccessPosting(user);
+  const dto = toUserDTO(user);
+  const applicationName = dto.portalAccess?.fullName?.trim();
+  return {
+    ...dto,
+    name: applicationName || dto.name,
+    displayName: applicationName || dto.name,
+  };
+}
+
+export async function syncClerkAvatarForUser(userId) {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  if (!user.clerkId) {
+    throw new AppError('No Clerk account linked', 400, 'NO_CLERK_ACCOUNT');
+  }
+
+  const updated = await syncAvatarFromClerk(user);
+  await enrichPortalAccessPosting(updated);
+  const dto = toUserDTO(updated);
+  const applicationName = dto.portalAccess?.fullName?.trim();
+  return {
+    ...dto,
+    name: applicationName || dto.name,
+    displayName: applicationName || dto.name,
+  };
 }
 
 export async function requestPasswordReset(email) {
@@ -196,7 +292,7 @@ export async function resetPassword({ token, password }) {
   return { message: 'Password updated successfully' };
 }
 
-export async function updateProfile(userId, { firstName, lastName, contactNumber }) {
+export async function updateProfile(userId, { firstName, lastName, contactNumber, avatar }) {
   const user = await User.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404, 'USER_NOT_FOUND');
@@ -209,6 +305,17 @@ export async function updateProfile(userId, { firstName, lastName, contactNumber
     user.portalAccess.contactNumber = contactNumber;
   }
 
+  if (avatar) {
+    if (avatar.startsWith('data:image/')) {
+      user.avatar = await saveAvatarImage(avatar, userId);
+    } else if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/uploads/')) {
+      user.avatar = avatar;
+    }
+  }
+
   await user.save();
-  return toUserDTO(user);
+  await user.populate('portalAccess.postingId');
+  const dto = toUserDTO(user);
+  broadcastToUser(userId.toString(), 'profile:updated', { userId: userId.toString() });
+  return dto;
 }

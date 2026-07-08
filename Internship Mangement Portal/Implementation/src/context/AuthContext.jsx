@@ -137,11 +137,15 @@ export function AuthProvider({ children }) {
 
   const loginSuperadmin = useCallback(async ({ email, password }) => {
     if (isSignedIn) {
-      await signOutRef.current();
+      try {
+        await signOutRef.current();
+      } catch {
+        // continue with admin login even if Clerk sign-out fails
+      }
     }
 
     const result = await loginWithPassword({
-      email,
+      email: email.toLowerCase().trim(),
       password,
       expectedRole: ROLES.SUPERADMIN,
     });

@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import {
-  Upload, Briefcase, User, Building2, Phone, FileText, CreditCard,
+  Upload, Briefcase, User, Building2, Phone, FileText, CreditCard, RefreshCw, MapPin, Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import Badge from '../components/ui/Badge';
 import { fetchInternshipPostings } from '../services/internshipService';
 import { submitPortalAccess } from '../services/portalAccessService';
 import { useAuth } from '../context/AuthContext';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
 import { PORTAL_ACCESS_STATUS, ROUTES } from '../constants';
 
 function readFileAsDataUrl(file) {
@@ -25,20 +27,38 @@ function readFileAsDataUrl(file) {
 export default function StudentOnboarding() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
-  const [postings, setPostings] = useState([]);
   const [screenshotPreview, setScreenshotPreview] = useState('');
   const [screenshotData, setScreenshotData] = useState('');
   const [cvFileName, setCvFileName] = useState('');
   const [cvData, setCvData] = useState('');
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
-      fullName: user?.name || '',
+      fullName: user?.portalAccess?.fullName || '',
+      postingId: '',
     },
   });
 
+  const selectedPostingId = watch('postingId');
+
+  const { data: postings = [], lastUpdated, refresh } = useRealtimePoll(
+    fetchInternshipPostings,
+    { interval: 12000 },
+  );
+
+  const selectedPosting = useMemo(
+    () => postings.find((p) => p.id === selectedPostingId) || null,
+    [postings, selectedPostingId],
+  );
+
   useEffect(() => {
-    fetchInternshipPostings().then(setPostings).catch(() => toast.error('Failed to load internships'));
-  }, []);
+    if (!selectedPostingId) return;
+    const stillAvailable = postings.some((p) => p.id === selectedPostingId);
+    if (!stillAvailable) {
+      setValue('postingId', '');
+      toast.error('Selected internship is no longer available. Please choose another.');
+    }
+  }, [postings, selectedPostingId, setValue]);
 
   const onScreenshotChange = async (event) => {
     const file = event.target.files?.[0];
@@ -110,13 +130,13 @@ export default function StudentOnboarding() {
       variant="student"
       wide
       title="Internship Application Form"
-      subtitle="Complete your profile, upload your CV (PDF), and submit payment proof. Portal access is granted after superadmin approval."
+      subtitle="Choose an internship track (updates live), complete your profile, and submit payment proof."
       backLink={ROUTES.LANDING}
       backLabel="Back to home"
       features={[
+        'Live internship listings',
         'Personal & academic details',
         'CV upload in PDF format',
-        'Payment screenshot verification',
       ]}
     >
       {user?.portalAccessStatus === PORTAL_ACCESS_STATUS.REJECTED && (
@@ -126,7 +146,74 @@ export default function StudentOnboarding() {
         </div>
       )}
 
+      {user?.portalAccess?.enrollmentStatus === 'completed' && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-sm text-emerald-800">
+          <p className="font-semibold mb-1">Previous internship completed</p>
+          <p>You can apply for a new internship below. Only one active enrollment is allowed at a time.</p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-gray-500">
+          {postings.length} internships available
+          {lastUpdated ? ` · updated ${lastUpdated.toLocaleTimeString()}` : ''}
+        </p>
+        <button
+          type="button"
+          onClick={() => refresh(false)}
+          className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-500"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh list
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Select Internship Track (live)
+          </label>
+          <input type="hidden" {...register('postingId', { required: 'Select an internship' })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {postings.map((posting) => {
+              const active = selectedPostingId === posting.id;
+              return (
+                <button
+                  key={posting.id}
+                  type="button"
+                  onClick={() => setValue('postingId', posting.id, { shouldValidate: true })}
+                  className={`text-left p-4 rounded-xl border-2 transition-all ${
+                    active
+                      ? 'border-emerald-500 bg-emerald-50/60 shadow-sm'
+                      : 'border-gray-200 hover:border-emerald-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{posting.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{posting.company}</p>
+                    </div>
+                    {posting.trending && <Badge variant="success">Trending</Badge>}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3 text-[11px] text-gray-500">
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{posting.duration}</span>
+                    <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{posting.type}</span>
+                    <span>{posting.spots} spots</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {errors.postingId && <p className="text-xs text-red-500 mt-1">{errors.postingId.message}</p>}
+        </div>
+
+        {selectedPosting && (
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+            <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">Selected track</p>
+            <p className="font-bold text-gray-900">{selectedPosting.title}</p>
+            <p className="text-sm text-gray-600">{selectedPosting.company} · {selectedPosting.level}</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Full Name"
@@ -179,25 +266,6 @@ export default function StudentOnboarding() {
               },
             })}
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-            Internship Track
-          </label>
-          <div className="relative">
-            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <select
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              {...register('postingId', { required: 'Select an internship' })}
-            >
-              <option value="">Select internship...</option>
-              {postings.map((posting) => (
-                <option key={posting.id} value={posting.id}>{posting.title}</option>
-              ))}
-            </select>
-          </div>
-          {errors.postingId && <p className="text-xs text-red-500 mt-1">{errors.postingId.message}</p>}
         </div>
 
         <div>

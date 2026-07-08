@@ -24,3 +24,16 @@ export const review = asyncHandler(async (req, res) => {
   );
   res.json({ success: true, data: { application } });
 });
+
+export const listActiveEnrollments = asyncHandler(async (req, res) => {
+  const applications = await portalAccessService.listActiveEnrollments();
+  res.json({ success: true, data: { applications } });
+});
+
+export const completeEnrollment = asyncHandler(async (req, res) => {
+  const application = await portalAccessService.completeEnrollment(
+    req.user._id,
+    req.params.studentId,
+  );
+  res.json({ success: true, data: { application } });
+});

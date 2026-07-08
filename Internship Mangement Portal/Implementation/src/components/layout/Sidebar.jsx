@@ -78,6 +78,24 @@ export default function Sidebar({ items, showAddButton = true, isOpen, onClose }
           </button>
         </div>
 
+        {isSuperadmin && user && (
+          <div className="mx-4 mt-4 p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80">
+            <div className="flex items-center gap-3">
+              <img
+                src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=10b981&color=fff`}
+                alt=""
+                className="w-9 h-9 rounded-xl object-cover ring-2 ring-slate-700"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white truncate">{user.name}</p>
+                <p className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Superadmin
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {!isSuperadmin && user && (
           <div className="mx-4 mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-100/60">
             <div className="flex items-center gap-3">

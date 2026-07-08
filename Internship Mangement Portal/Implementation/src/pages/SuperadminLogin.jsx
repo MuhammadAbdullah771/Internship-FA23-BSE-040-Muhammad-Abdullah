@@ -9,27 +9,40 @@ import Input from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../constants';
 
+const DEMO_EMAIL = 'superadmin@internhub.io';
+const DEMO_PASSWORD = 'superadmin123';
+
 export default function SuperadminLogin() {
   const navigate = useNavigate();
   const { loginSuperadmin } = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
+    defaultValues: {
+      email: DEMO_EMAIL,
+      password: DEMO_PASSWORD,
+    },
+  });
 
   const onSubmit = async (data) => {
     setSubmitting(true);
     try {
       await loginSuperadmin({
-        email: data.email,
+        email: data.email.trim().toLowerCase(),
         password: data.password,
       });
       toast.success('Welcome back, Superadmin');
       navigate(ROUTES.SUPERADMIN.DASHBOARD);
     } catch (error) {
-      const message = error.response?.data?.message || 'Invalid email or password';
+      const message = error.response?.data?.message || error.message || 'Invalid email or password';
       toast.error(message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const fillDemoCredentials = () => {
+    setValue('email', DEMO_EMAIL);
+    setValue('password', DEMO_PASSWORD);
   };
 
   return (
@@ -45,12 +58,25 @@ export default function SuperadminLogin() {
         'Analytics, reports & performance tracking',
       ]}
     >
+      <div className="mb-5 p-4 rounded-xl bg-slate-100 border border-slate-200 text-sm">
+        <p className="font-semibold text-slate-800 mb-1">Demo superadmin credentials</p>
+        <p className="text-slate-600">Email: <strong>{DEMO_EMAIL}</strong></p>
+        <p className="text-slate-600">Password: <strong>{DEMO_PASSWORD}</strong></p>
+        <button
+          type="button"
+          onClick={fillDemoCredentials}
+          className="mt-2 text-xs font-semibold text-emerald-700 hover:text-emerald-600"
+        >
+          Fill credentials
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
           label="Admin Email"
           type="email"
           icon={Mail}
-          placeholder="superadmin@internhub.io"
+          placeholder={DEMO_EMAIL}
           autoComplete="username"
           error={errors.email?.message}
           {...register('email', {
@@ -83,9 +109,7 @@ export default function SuperadminLogin() {
       </form>
 
       <p className="text-center text-xs text-gray-400 mt-6 leading-relaxed">
-        Superadmin accounts are created by the system administrator only.
-        <br />
-        Unauthorized access is prohibited.
+        Use the demo credentials above. Run <code className="bg-gray-100 px-1 rounded">npm run seed</code> if login fails.
       </p>
     </AuthLayout>
   );

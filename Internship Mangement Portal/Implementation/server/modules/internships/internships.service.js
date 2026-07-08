@@ -4,6 +4,7 @@ import { User } from '../../models/User.js';
 import { AppError } from '../../utils/AppError.js';
 import { assertPortalApproved } from '../portal-access/portal-access.service.js';
 import { toPostingDTO, toApplicationDTO } from '../../utils/internshipSerializer.js';
+import { broadcastToRole } from '../events/eventBus.js';
 
 export async function listPostings({ trending } = {}) {
   const filter = { isActive: true };
@@ -24,6 +25,14 @@ export async function applyToPosting(postingId, userId) {
   if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   assertPortalApproved(user);
 
+  if (user.portalAccess?.enrollmentStatus === 'active') {
+    throw new AppError(
+      'You already have an active internship enrollment. Complete it before applying to another.',
+      409,
+      'ACTIVE_ENROLLMENT',
+    );
+  }
+
   const posting = await InternshipPosting.findOne({ _id: postingId, isActive: true });
   if (!posting) throw new AppError('Internship not found', 404, 'POSTING_NOT_FOUND');
 
@@ -33,6 +42,8 @@ export async function applyToPosting(postingId, userId) {
   }
 
   const application = await InternshipApplication.create({ userId, postingId });
+  broadcastToRole('superadmin', 'applications:updated', { userId: userId.toString(), postingId });
+  broadcast('applications:updated', { userId: userId.toString() });
   return {
     message: `Application submitted for ${posting.title}`,
     application: toApplicationDTO(application),

@@ -108,7 +108,13 @@ async function seedUsers() {
   for (const seedUser of SEED_USERS) {
     const existing = await User.findOne({ email: seedUser.email });
     if (existing) {
-      console.log(`User skipped (exists): ${seedUser.email}`);
+      if (seedUser.role === ROLES.SUPERADMIN) {
+        existing.passwordHash = seedUser.passwordHash;
+        await existing.save();
+        console.log(`Superadmin password reset: ${seedUser.email}`);
+      } else {
+        console.log(`User skipped (exists): ${seedUser.email}`);
+      }
       continue;
     }
     await User.create(seedUser);

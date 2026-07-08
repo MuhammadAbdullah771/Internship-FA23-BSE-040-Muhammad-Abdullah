@@ -26,9 +26,23 @@ export async function fetchPendingPortalApplications() {
   return data.data.applications;
 }
 
+export async function fetchActiveEnrollments() {
+  const { data } = await api.get('/portal-access/active-enrollments');
+  return data.data.applications;
+}
+
 export async function reviewPortalApplication(studentId, payload) {
   try {
     const { data } = await api.patch(`/portal-access/${studentId}/review`, payload);
+    return { success: true, application: data.data.application };
+  } catch (error) {
+    return { success: false, error: extractError(error) };
+  }
+}
+
+export async function completeStudentEnrollment(studentId) {
+  try {
+    const { data } = await api.patch(`/portal-access/${studentId}/complete-enrollment`);
     return { success: true, application: data.data.application };
   } catch (error) {
     return { success: false, error: extractError(error) };

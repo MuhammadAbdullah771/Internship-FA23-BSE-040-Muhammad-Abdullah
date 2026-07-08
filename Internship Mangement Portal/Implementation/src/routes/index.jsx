@@ -71,7 +71,7 @@ export default function AppRoutes() {
         <Route path={ROUTES.STUDENT.FORGOT_PASSWORD} element={<ForgotPassword />} />
       </Route>
 
-      <Route element={<StudentAccessRoute allowedStatuses={[PORTAL_ACCESS_STATUS.UNSUBMITTED, PORTAL_ACCESS_STATUS.REJECTED]} />}>
+      <Route element={<StudentAccessRoute allowedStatuses={[PORTAL_ACCESS_STATUS.UNSUBMITTED, PORTAL_ACCESS_STATUS.REJECTED]} allowReapply />}>
         <Route path={ROUTES.STUDENT.ONBOARDING} element={<StudentOnboarding />} />
       </Route>
 

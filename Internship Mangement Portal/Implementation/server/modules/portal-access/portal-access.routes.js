@@ -33,6 +33,13 @@ router.get(
   portalAccessController.listPending,
 );
 
+router.get(
+  '/active-enrollments',
+  authenticate,
+  authorize(ROLES.SUPERADMIN),
+  portalAccessController.listActiveEnrollments,
+);
+
 router.patch(
   '/:studentId/review',
   authenticate,
@@ -40,6 +47,14 @@ router.patch(
   validate(studentIdParamSchema, 'params'),
   validate(reviewPortalAccessSchema),
   portalAccessController.review,
+);
+
+router.patch(
+  '/:studentId/complete-enrollment',
+  authenticate,
+  authorize(ROLES.SUPERADMIN),
+  validate(studentIdParamSchema, 'params'),
+  portalAccessController.completeEnrollment,
 );
 
 export default router;

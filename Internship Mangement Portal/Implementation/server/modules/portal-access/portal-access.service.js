@@ -6,6 +6,7 @@ import { InternshipPosting } from '../../models/InternshipPosting.js';
 import { ROLES } from '../../constants/roles.js';
 import { AppError } from '../../utils/AppError.js';
 import { toUserDTO } from '../../utils/userSerializer.js';
+import { broadcastToRole, broadcastToUser } from '../events/eventBus.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const paymentsDir = path.resolve(moduleDir, '../../uploads/payments');
@@ -32,10 +33,27 @@ function mapPortalAccessFields(portalAccess = {}) {
 
 function mapApplicationUser(user) {
   const dto = toUserDTO(user);
+  const applicationName = dto.portalAccess?.fullName?.trim();
   return {
     ...dto,
-    portalAccess: mapPortalAccessFields(user.portalAccess),
+    name: applicationName || dto.name,
+    displayName: applicationName || dto.name,
+    portalAccess: dto.portalAccess,
   };
+}
+
+export async function enrichPortalAccessPosting(user) {
+  if (!user?.portalAccess?.postingId) return user;
+
+  const rawId = user.portalAccess.postingId._id || user.portalAccess.postingId;
+  const posting = await InternshipPosting.findById(rawId);
+
+  if (posting) {
+    user.portalAccess.postingId = posting;
+    user.portalAccess.internshipTitle = posting.title;
+  }
+
+  return user;
 }
 
 async function ensureDir(dir) {
@@ -102,6 +120,7 @@ export function assertPortalApproved(user) {
 export async function getMyPortalAccess(userId) {
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  await enrichPortalAccessPosting(user);
   return mapApplicationUser(user);
 }
 
@@ -126,8 +145,22 @@ export async function submitPortalAccess(userId, payload) {
   if (user.portalAccess?.status === 'pending') {
     throw new AppError('Your application is already under review', 409, 'ALREADY_PENDING');
   }
-  if (user.portalAccess?.status === 'approved') {
-    throw new AppError('Your portal access is already approved', 409, 'ALREADY_APPROVED');
+
+  const enrollmentStatus = user.portalAccess?.enrollmentStatus || 'none';
+  if (user.portalAccess?.status === 'approved' && enrollmentStatus === 'active') {
+    throw new AppError(
+      'You already have an active internship enrollment. Complete it before applying to another.',
+      409,
+      'ACTIVE_ENROLLMENT',
+    );
+  }
+
+  if (user.portalAccess?.status === 'approved' && enrollmentStatus !== 'completed') {
+    throw new AppError(
+      'Your portal access is already approved. Wait for your current enrollment to be marked complete before re-applying.',
+      409,
+      'ENROLLMENT_NOT_COMPLETE',
+    );
   }
 
   const posting = await InternshipPosting.findById(postingId);
@@ -150,6 +183,8 @@ export async function submitPortalAccess(userId, payload) {
     cvPdf: cvPath,
     paymentScreenshot: screenshotPath,
     notes: notes?.trim() || '',
+    enrollmentStatus: 'none',
+    enrollmentCompletedAt: null,
     submittedAt: new Date(),
     reviewedAt: null,
     reviewedBy: null,
@@ -157,18 +192,21 @@ export async function submitPortalAccess(userId, payload) {
   };
 
   await user.save();
-  return mapApplicationUser(user);
+  await enrichPortalAccessPosting(user);
+  const result = mapApplicationUser(user);
+  broadcastToUser(userId.toString(), 'portal-access:updated', { studentId: userId.toString() });
+  broadcastToRole(ROLES.SUPERADMIN, 'portal-access:submitted', { studentId: userId.toString() });
+  return result;
 }
 
 export async function listPendingApplications() {
   const users = await User.find({
     role: ROLES.STUDENT,
     'portalAccess.status': 'pending',
-  })
-    .sort({ 'portalAccess.submittedAt': -1 })
-    .populate('portalAccess.postingId', 'title level duration');
+  }).sort({ 'portalAccess.submittedAt': -1 });
 
-  return users.map(mapApplicationUser);
+  const enriched = await Promise.all(users.map((user) => enrichPortalAccessPosting(user)));
+  return enriched.map(mapApplicationUser);
 }
 
 export async function reviewPortalAccess(adminId, studentId, { action, rejectionReason }) {
@@ -181,6 +219,8 @@ export async function reviewPortalAccess(adminId, studentId, { action, rejection
   if (action === 'approve') {
     user.portalAccess.status = 'approved';
     user.portalAccess.rejectionReason = '';
+    user.portalAccess.enrollmentStatus = 'active';
+    user.portalAccess.enrollmentCompletedAt = null;
   } else {
     user.portalAccess.status = 'rejected';
     user.portalAccess.rejectionReason = rejectionReason?.trim() || 'Application rejected by admin.';
@@ -189,6 +229,54 @@ export async function reviewPortalAccess(adminId, studentId, { action, rejection
   user.portalAccess.reviewedAt = new Date();
   user.portalAccess.reviewedBy = adminId;
   await user.save();
+  await enrichPortalAccessPosting(user);
+  const result = mapApplicationUser(user);
+  broadcastToUser(studentId.toString(), 'portal-access:updated', {
+    studentId: studentId.toString(),
+    status: user.portalAccess.status,
+  });
+  broadcastToUser(studentId.toString(), 'portal-access:reviewed', {
+    studentId: studentId.toString(),
+    status: user.portalAccess.status,
+  });
+  broadcastToRole(ROLES.SUPERADMIN, 'portal-access:reviewed', {
+    studentId: studentId.toString(),
+    status: user.portalAccess.status,
+  });
 
-  return mapApplicationUser(user);
+  return result;
+}
+
+export async function listActiveEnrollments() {
+  const users = await User.find({
+    role: ROLES.STUDENT,
+    'portalAccess.status': 'approved',
+    'portalAccess.enrollmentStatus': 'active',
+  }).sort({ 'portalAccess.reviewedAt': -1 });
+
+  const enriched = await Promise.all(users.map((user) => enrichPortalAccessPosting(user)));
+  return enriched.map(mapApplicationUser);
+}
+
+export async function completeEnrollment(adminId, studentId) {
+  const user = await User.findById(studentId);
+  if (!user) throw new AppError('Student not found', 404, 'USER_NOT_FOUND');
+  if (user.portalAccess?.status !== 'approved') {
+    throw new AppError('Student portal access is not approved', 400, 'NOT_APPROVED');
+  }
+  if (user.portalAccess?.enrollmentStatus !== 'active') {
+    throw new AppError('Student has no active internship enrollment', 400, 'NO_ACTIVE_ENROLLMENT');
+  }
+
+  user.portalAccess.enrollmentStatus = 'completed';
+  user.portalAccess.enrollmentCompletedAt = new Date();
+  await user.save();
+
+  await enrichPortalAccessPosting(user);
+  const result = mapApplicationUser(user);
+  broadcastToUser(studentId.toString(), 'portal-access:updated', {
+    studentId: studentId.toString(),
+    enrollmentStatus: 'completed',
+  });
+  return result;
 }

@@ -25,7 +25,10 @@ const clerkClient = isClerkConfigured()
   : null;
 
 async function authenticateWithClerk(token) {
-  const verifyOptions = { secretKey: env.clerk.secretKey };
+  const verifyOptions = {
+    secretKey: env.clerk.secretKey,
+    clockSkewInMs: env.isDev ? 120_000 : 10_000,
+  };
 
   if (env.isProd) {
     verifyOptions.authorizedParties = [...new Set([env.clientUrl, ...env.corsOrigin])];
@@ -87,13 +90,17 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
       }
 
       if (env.isDev) {
-        console.error('[auth] Clerk token verification failed:', clerkError?.message || clerkError);
+        console.error('[auth] Clerk token verification failed:', clerkError?.reason || clerkError?.message || clerkError);
       }
 
       try {
         user = await authenticateWithJwt(token);
       } catch {
-        throw new AppError('Invalid or expired token', 401, 'UNAUTHORIZED');
+        const reason = clerkError?.reason || clerkError?.message;
+        const message = reason === 'token-iat-in-the-future'
+          ? 'Server clock is behind Clerk. Sync your system time and try again.'
+          : 'Invalid or expired token';
+        throw new AppError(message, 401, 'UNAUTHORIZED');
       }
     }
   } else {

@@ -6,15 +6,20 @@ import Button from '../components/ui/Button';
 
 export default function StudentAuthCallback() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading, syncStatus, syncError, retrySync, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, syncStatus, syncError, retrySync, logout, isClerkSignedIn } = useAuth();
 
   useEffect(() => {
     if (isLoading || syncStatus === 'syncing') return;
 
     if (isAuthenticated && user) {
       navigate(getStudentAccessPath(user), { replace: true });
+      return;
     }
-  }, [isAuthenticated, isLoading, navigate, syncStatus, user]);
+
+    if (!isClerkSignedIn || syncStatus === 'pending') {
+      navigate(ROUTES.STUDENT.LOGIN, { replace: true });
+    }
+  }, [isAuthenticated, isClerkSignedIn, isLoading, navigate, syncStatus, user]);
 
   if (syncStatus === 'error' && !isLoading) {
     return (

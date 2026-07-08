@@ -2,6 +2,7 @@ import { Task } from '../../models/Task.js';
 import { ROLES } from '../../constants/roles.js';
 import { AppError } from '../../utils/AppError.js';
 import { toTaskDTO, toKanbanBoard } from '../../utils/taskSerializer.js';
+import { broadcastToRole } from '../events/eventBus.js';
 
 async function populateQuery(query) {
   return query.populate({ path: 'assigneeId', select: 'firstName lastName avatar email' });
@@ -30,6 +31,7 @@ export async function getTaskById(id, user) {
 export async function createTask(payload, createdBy) {
   const task = await Task.create({ ...payload, createdBy: createdBy._id });
   const populated = await populateQuery(Task.findById(task._id));
+  broadcastToRole(ROLES.SUPERADMIN, 'tasks:updated', { taskId: task._id.toString() });
   return toTaskDTO(populated);
 }
 
@@ -72,11 +74,13 @@ export async function updateTask(id, payload, user) {
 
   await task.save();
   const populated = await populateQuery(Task.findById(task._id));
+  broadcastToRole(ROLES.SUPERADMIN, 'tasks:updated', { taskId: task._id.toString() });
   return toTaskDTO(populated);
 }
 
 export async function deleteTask(id) {
   const task = await Task.findByIdAndDelete(id);
   if (!task) throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
+  broadcastToRole(ROLES.SUPERADMIN, 'tasks:updated', { taskId: id });
   return { message: 'Task deleted' };
 }

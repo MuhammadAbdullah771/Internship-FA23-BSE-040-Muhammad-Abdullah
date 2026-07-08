@@ -42,6 +42,11 @@ export const updateMe = asyncHandler(async (req, res) => {
   return res.status(200).json({ success: true, data: { user } });
 });
 
+export const syncClerkAvatar = asyncHandler(async (req, res) => {
+  const user = await authService.syncClerkAvatarForUser(req.user._id);
+  return res.status(200).json({ success: true, data: { user } });
+});
+
 export const forgotPassword = asyncHandler(async (req, res) => {
   const result = await authService.requestPasswordReset(req.body.email);
   return res.status(200).json({ success: true, data: result });

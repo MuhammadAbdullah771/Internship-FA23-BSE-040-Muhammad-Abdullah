@@ -9,6 +9,7 @@ export default function PageHeader({
   actions,
   className,
   size = 'default',
+  dark,
 }) {
   const titleClass = size === 'large'
     ? 'text-3xl lg:text-4xl font-extrabold tracking-tight'
@@ -23,14 +24,14 @@ export default function PageHeader({
     >
       <div className="space-y-2">
         {eyebrow && (
-          <p className="section-label">{eyebrow}</p>
+          <p className={cn('section-label', dark && 'text-slate-500')}>{eyebrow}</p>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className={cn(titleClass, 'text-gradient-dark')}>{title}</h1>
+          <h1 className={cn(titleClass, dark ? 'text-white' : 'text-gradient-dark')}>{title}</h1>
           {badge}
         </div>
         {subtitle && (
-          <p className="text-[15px] text-slate-500 leading-relaxed max-w-2xl">{subtitle}</p>
+          <p className={cn('text-[15px] leading-relaxed max-w-2xl', dark ? 'text-slate-400' : 'text-slate-500')}>{subtitle}</p>
         )}
       </div>
       {actions && (

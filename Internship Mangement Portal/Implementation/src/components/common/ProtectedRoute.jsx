@@ -4,6 +4,7 @@ import {
   getHomePath,
   getStudentAccessPath,
   isStudentPortalApproved,
+  canStudentReapply,
   ROUTES,
   ROLES,
 } from '../../constants';
@@ -49,7 +50,7 @@ export function ProtectedRoute({
   return <Outlet />;
 }
 
-export function StudentAccessRoute({ allowedStatuses }) {
+export function StudentAccessRoute({ allowedStatuses, allowReapply = false }) {
   const { user, isAuthenticated, isLoading, isClerkSignedIn } = useAuth();
   const location = useLocation();
 
@@ -68,7 +69,10 @@ export function StudentAccessRoute({ allowedStatuses }) {
     return <Navigate to={getHomePath(user.role)} replace />;
   }
 
-  if (!allowedStatuses.includes(user.portalAccessStatus)) {
+  const statusAllowed = allowedStatuses.includes(user.portalAccessStatus);
+  const reapplyAllowed = allowReapply && canStudentReapply(user);
+
+  if (!statusAllowed && !reapplyAllowed) {
     return <Navigate to={getStudentAccessPath(user)} replace />;
   }
 

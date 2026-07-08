@@ -35,5 +35,6 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authC
 
 router.get('/me', authenticate, authController.me);
 router.patch('/me', authenticate, validate(updateProfileSchema), authController.updateMe);
+router.post('/me/sync-clerk-avatar', authenticate, authController.syncClerkAvatar);
 
 export default router;

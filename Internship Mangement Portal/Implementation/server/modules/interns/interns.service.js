@@ -1,6 +1,7 @@
 import { Intern } from '../../models/Intern.js';
 import { AppError } from '../../utils/AppError.js';
 import { toInternDTO } from '../../utils/internSerializer.js';
+import { broadcastToRole } from '../events/eventBus.js';
 
 function buildListFilter({ search, department, status, intake }) {
   const filter = {};
@@ -91,6 +92,7 @@ export async function createIntern(payload) {
     avatar: payload.avatar || buildAvatar(payload.email),
   });
 
+  broadcastToRole('superadmin', 'interns:updated', { action: 'created' });
   return toInternDTO(intern);
 }
 
@@ -110,6 +112,7 @@ export async function updateIntern(id, payload) {
   Object.assign(intern, payload);
   await intern.save();
 
+  broadcastToRole('superadmin', 'interns:updated', { action: 'updated', internId: id });
   return toInternDTO(intern);
 }
 
@@ -118,6 +121,7 @@ export async function deleteIntern(id) {
   if (!intern) {
     throw new AppError('Intern not found', 404, 'INTERN_NOT_FOUND');
   }
+  broadcastToRole('superadmin', 'interns:updated', { action: 'deleted', internId: id });
   return { message: 'Intern deleted successfully' };
 }
 

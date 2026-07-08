@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, RefreshCw, Clock, CheckCircle, XCircle } from 'lucide-react';
@@ -8,6 +8,8 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { fetchMyApplications } from '../services/internshipService';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 import { ROUTES } from '../constants';
 
 const STATUS_CONFIG = {
@@ -26,25 +28,12 @@ function formatDate(date) {
 }
 
 export default function MyApplications() {
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: applications = [], loading, lastUpdated, refresh } = useRealtimePoll(
+    fetchMyApplications,
+    { interval: 10000 },
+  );
 
-  const loadApplications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await fetchMyApplications();
-      setApplications(data);
-    } catch {
-      toast.error('Failed to load applications');
-      setApplications([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadApplications();
-  }, [loadApplications]);
+  useRealtimeStream(['applications:updated', 'portal-access:reviewed'], () => refresh(true));
 
   return (
     <div className="space-y-6">
@@ -54,7 +43,7 @@ export default function MyApplications() {
         eyebrow="Internships"
         actions={(
           <>
-            <Button variant="outline" icon={RefreshCw} onClick={loadApplications} disabled={loading}>
+            <Button variant="outline" icon={RefreshCw} onClick={() => refresh(false)} disabled={loading}>
               Refresh
             </Button>
             <Link to={ROUTES.STUDENT.PORTAL}>

@@ -1,22 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Clock, TrendingUp, FileText } from 'lucide-react';
+import { CheckCircle, Clock, TrendingUp, FileText, Users, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DashboardCard from '../components/common/DashboardCard';
+import AreaLineChart from '../components/charts/AreaLineChart';
+import BarChartComponent from '../components/charts/BarChartComponent';
+import DepartmentDonut from '../components/charts/DepartmentDonut';
 import { useAuth } from '../context/AuthContext';
 import { useAppPaths } from '../hooks/useAppPaths';
 import { fetchStudentDashboard } from '../services/studentService';
-import AreaLineChart from '../components/charts/AreaLineChart';
-import DepartmentDonut from '../components/charts/DepartmentDonut';
+import { fetchAdminReports } from '../services/adminService';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 
 export default function Reports() {
   const { isStudent } = useAuth();
   const paths = useAppPaths();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(isStudent);
+
+  const {
+    data: adminReports,
+    loading: adminLoading,
+    refresh: refreshAdminReports,
+  } = useRealtimePoll(fetchAdminReports, { interval: 10000, enabled: !isStudent });
+
+  useRealtimeStream(
+    ['students:updated', 'portal-access:submitted', 'portal-access:reviewed', 'applications:updated'],
+    () => refreshAdminReports(true),
+    { enabled: !isStudent },
+  );
 
   useEffect(() => {
     if (!isStudent) return;
@@ -27,16 +43,52 @@ export default function Reports() {
   }, [isStudent]);
 
   if (!isStudent) {
+    const stats = adminReports?.stats;
+    const charts = adminReports?.charts || {};
+
+    if (adminLoading && !adminReports) {
+      return (
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Reports &amp; Analytics</h1>
-        <Card>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <AreaLineChart height={300} />
-            </Card>
-            <DepartmentDonut />
-          </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white">Reports &amp; Analytics</h1>
+          <p className="text-slate-400 mt-1">Live metrics from Clerk-authenticated students only.</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <DashboardCard label="Clerk Students" value={String(stats?.totalClerkStudents ?? 0)} change="Live" icon={Users} dark iconColor="bg-emerald-500/15 text-emerald-400" />
+          <DashboardCard label="Approved" value={String(stats?.approvedStudents ?? 0)} change="Portal access" icon={CheckCircle} dark iconColor="bg-blue-500/15 text-blue-400" />
+          <DashboardCard label="Active Enrollments" value={String(stats?.activeEnrollments ?? 0)} change="In progress" icon={TrendingUp} dark iconColor="bg-violet-500/15 text-violet-400" />
+          <DashboardCard label="Applications" value={String(stats?.totalApplications ?? 0)} change={`${stats?.pendingApplications ?? 0} pending`} icon={Briefcase} dark iconColor="bg-amber-500/15 text-amber-400" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 bg-slate-800/50 border-slate-700/60">
+            <h2 className="text-lg font-semibold text-white mb-1">Clerk Signups Over Time</h2>
+            <p className="text-sm text-slate-400 mb-4">Weekly new student accounts</p>
+            <AreaLineChart data={charts.signupsOverTime} emptyMessage="No Clerk signups recorded yet" dark />
+          </Card>
+          <Card className="bg-slate-800/50 border-slate-700/60">
+            <h2 className="text-lg font-semibold text-white mb-1">Portal Status</h2>
+            <p className="text-sm text-slate-400 mb-4">Application pipeline breakdown</p>
+            <DepartmentDonut
+              data={charts.portalStatusChart}
+              centerLabel={stats ? `${stats.totalClerkStudents} Students` : '0 Students'}
+              emptyMessage="No Clerk students yet"
+            />
+          </Card>
+        </div>
+
+        <Card className="bg-slate-800/50 border-slate-700/60">
+          <h2 className="text-lg font-semibold text-white mb-1">Applications by Internship</h2>
+          <p className="text-sm text-slate-400 mb-4">Real application volume per posting</p>
+          <BarChartComponent data={charts.applicationsByPosting} emptyMessage="No applications from Clerk students yet" dark />
         </Card>
       </div>
     );

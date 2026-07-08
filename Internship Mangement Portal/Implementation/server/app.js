@@ -11,6 +11,8 @@ import taskRoutes from './modules/tasks/tasks.routes.js';
 import internshipRoutes from './modules/internships/internships.routes.js';
 import portalAccessRoutes from './modules/portal-access/portal-access.routes.js';
 import studentRoutes from './modules/students/students.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
+import eventsRoutes from './modules/events/events.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 export function createApp() {
@@ -42,6 +44,8 @@ export function createApp() {
   app.use('/api/internships', internshipRoutes);
   app.use('/api/portal-access', portalAccessRoutes);
   app.use('/api/students', studentRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/events', eventsRoutes);
   app.use('/uploads', express.static(path.join(env.rootDir, 'server/uploads')));
 
   if (env.isDev) {

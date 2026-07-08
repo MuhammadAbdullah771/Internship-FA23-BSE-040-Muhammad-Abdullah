@@ -1,85 +1,72 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, UserPlus, Trash2, RefreshCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Shield, RefreshCw, ExternalLink, Users } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { useAuth } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import SearchBar from '../components/common/SearchBar';
 import Filter from '../components/common/Filter';
 import Pagination from '../components/common/Pagination';
-import InternFormModal from '../components/interns/InternFormModal';
-import {
-  fetchInterns,
-  fetchInternFilters,
-  fetchInternStats,
-  deleteIntern,
-} from '../services/internService';
+import { fetchAdminStudents } from '../services/adminService';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
+import { ROUTES } from '../constants';
 
-const statusVariant = { Active: 'success', Onboarding: 'warning', Completed: 'default' };
+const portalVariant = {
+  unsubmitted: 'default',
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'danger',
+};
+
+const enrollmentVariant = {
+  none: 'default',
+  active: 'success',
+  completed: 'info',
+};
+
+function formatDate(date) {
+  if (!date) return '—';
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function InternManagement() {
-  const { isSuperadmin } = useAuth();
-  const [interns, setInterns] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [filterOptions, setFilterOptions] = useState({ departments: [], statuses: [], intakes: [] });
-  const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-
   const [search, setSearch] = useState('');
-  const [department, setDepartment] = useState('');
-  const [status, setStatus] = useState('');
-  const [intake, setIntake] = useState('');
+  const [portalStatus, setPortalStatus] = useState('');
+  const [enrollmentStatus, setEnrollmentStatus] = useState('');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 10 });
+  const [filterOptions, setFilterOptions] = useState({
+    portalStatuses: ['unsubmitted', 'pending', 'approved', 'rejected'],
+    enrollmentStatuses: ['none', 'active', 'completed'],
+  });
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [listResult, statsResult, filtersResult] = await Promise.all([
-        fetchInterns({
-          page,
-          limit: 10,
-          search: search || undefined,
-          department: department || undefined,
-          status: status || undefined,
-          intake: intake || undefined,
-        }),
-        fetchInternStats(),
-        fetchInternFilters(),
-      ]);
-      setInterns(listResult.interns);
-      setPagination(listResult.pagination);
-      setStats(statsResult);
-      setFilterOptions(filtersResult);
-    } catch {
-      toast.error('Failed to load interns. Ensure the API is running.');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, department, status, intake]);
+  const loadStudents = useCallback(async () => fetchAdminStudents({
+    page,
+    limit: 10,
+    search: search || undefined,
+    portalStatus: portalStatus || undefined,
+    enrollmentStatus: enrollmentStatus || undefined,
+  }), [page, search, portalStatus, enrollmentStatus]);
+
+  const { data, loading, lastUpdated, refresh } = useRealtimePoll(loadStudents, { interval: 8000 });
+
+  useRealtimeStream(
+    ['students:updated', 'portal-access:submitted', 'portal-access:reviewed', 'portal-access:updated'],
+    () => refresh(true),
+  );
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (data?.filters) setFilterOptions(data.filters);
+  }, [data?.filters]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, department, status, intake]);
+  }, [search, portalStatus, enrollmentStatus]);
 
-  const handleDelete = async (intern) => {
-    if (!window.confirm(`Remove ${intern.name} from the cohort?`)) return;
-
-    const result = await deleteIntern(intern.id);
-    if (!result.success) {
-      toast.error(result.error);
-      return;
-    }
-    toast.success('Intern removed');
-    loadData();
-  };
+  const students = data?.students || [];
+  const pagination = data?.pagination || { total: 0, pages: 1, limit: 10 };
 
   return (
     <div className="space-y-6">
@@ -90,109 +77,111 @@ export default function InternManagement() {
       >
         <div>
           <div className="flex items-center gap-2 mb-1">
-            {isSuperadmin && <Shield className="w-5 h-5 text-emerald-600" />}
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Intern Management</h1>
+            <Shield className="w-5 h-5 text-emerald-400" />
+            <h1 className="text-2xl lg:text-3xl font-bold text-white">Clerk Students</h1>
           </div>
-          <p className="text-gray-500">
-            Manage and track your current intern cohort across all departments.
-            {stats && (
-              <span className="text-emerald-600 font-medium">
-                {' '}{stats.total} total · {stats.active} active
-              </span>
-            )}
+          <p className="text-slate-400 text-sm">
+            Real-time roster of students synced from Clerk authentication only.
+            {lastUpdated ? ` · Updated ${lastUpdated.toLocaleTimeString()}` : ''}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" icon={RefreshCw} onClick={loadData} disabled={loading}>
+          <Button variant="outline" icon={RefreshCw} onClick={() => refresh(false)} disabled={loading} className="border-slate-600 text-slate-200">
             Refresh
           </Button>
-          <Button variant="purple" icon={UserPlus} onClick={() => setModalOpen(true)}>
-            Add Intern
-          </Button>
+          <Link to={ROUTES.SUPERADMIN.APPROVALS}>
+            <Button className="!from-emerald-600 !to-teal-500" icon={Users}>Approvals</Button>
+          </Link>
         </div>
       </motion.div>
 
-      <Card>
+      <Card className="bg-slate-800/50 border-slate-700/60 backdrop-blur-sm">
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           <SearchBar
-            placeholder="Search interns by name or email..."
+            placeholder="Search by name, email, or institute..."
             className="flex-1"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            dark
           />
           <div className="flex gap-3 flex-wrap">
             <Filter
-              label="Department"
-              options={filterOptions.departments}
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
+              label="Portal Status"
+              options={filterOptions.portalStatuses}
+              value={portalStatus}
+              onChange={(e) => setPortalStatus(e.target.value)}
+              className="w-40"
+              dark
+            />
+            <Filter
+              label="Enrollment"
+              options={filterOptions.enrollmentStatuses}
+              value={enrollmentStatus}
+              onChange={(e) => setEnrollmentStatus(e.target.value)}
               className="w-36"
-            />
-            <Filter
-              label="Status"
-              options={filterOptions.statuses}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-32"
-            />
-            <Filter
-              label="Intake"
-              options={filterOptions.intakes}
-              value={intake}
-              onChange={(e) => setIntake(e.target.value)}
-              className="w-28"
+              dark
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-[200px]">
-          {loading ? (
+        <div className="overflow-x-auto min-h-[240px]">
+          {loading && !data ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : interns.length === 0 ? (
-            <p className="text-center text-gray-500 py-16">No interns found.</p>
+          ) : students.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <Users className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400 font-medium">No Clerk students found</p>
+              <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                Students appear here after they sign in with Clerk on the student portal. Seeded or manual accounts are not shown.
+              </p>
+            </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
-                  {['Name', 'Email', 'Role', 'Department', 'Status', 'Actions'].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider py-3 px-4">
+                <tr className="border-b border-slate-700/80">
+                  {['Student', 'Email', 'Internship', 'Portal', 'Enrollment', 'Joined'].map((h) => (
+                    <th key={h} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider py-3 px-4">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {interns.map((intern) => (
-                  <tr key={intern.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar src={intern.avatar} name={intern.name} size="sm" />
-                        <div>
-                          <span className="font-medium text-gray-900 block">{intern.name}</span>
-                          <span className="text-xs text-gray-400">Intake {intern.intake}</span>
+                {students.map((student) => {
+                  const portal = student.portalAccess || {};
+                  return (
+                    <tr key={student.id} className="border-b border-slate-800/80 hover:bg-slate-900/40 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar src={student.avatar} name={student.displayName || student.name} size="sm" />
+                          <div className="min-w-0">
+                            <span className="font-medium text-white block truncate">{student.displayName || student.name}</span>
+                            <span className="text-xs text-slate-500 truncate block">{portal.institute || '—'}</span>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-gray-500">{intern.email}</td>
-                    <td className="py-4 px-4 text-gray-700">{intern.role}</td>
-                    <td className="py-4 px-4 text-gray-500">{intern.department}</td>
-                    <td className="py-4 px-4">
-                      <Badge variant={statusVariant[intern.status]}>{intern.status}</Badge>
-                    </td>
-                    <td className="py-4 px-4">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(intern)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        aria-label={`Delete ${intern.name}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-4 px-4 text-slate-400 text-sm max-w-[180px] truncate">{student.email}</td>
+                      <td className="py-4 px-4 text-slate-300 text-sm max-w-[160px] truncate">
+                        {portal.internship?.title || portal.internshipTitle || '—'}
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant={portalVariant[student.portalAccessStatus] || 'default'}>
+                          {student.portalAccessStatus || 'unsubmitted'}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant={enrollmentVariant[portal.enrollmentStatus] || 'default'}>
+                          {portal.enrollmentStatus || 'none'}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 text-slate-500 text-sm whitespace-nowrap">
+                        {formatDate(student.joinedAt || student.createdAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -203,14 +192,19 @@ export default function InternManagement() {
           total={pagination.total}
           perPage={pagination.limit}
           onPageChange={setPage}
+          dark
         />
       </Card>
 
-      <InternFormModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSuccess={() => loadData()}
-      />
+      <Card className="bg-emerald-500/5 border-emerald-500/20 p-4 flex gap-3 items-start">
+        <ExternalLink className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+        <div className="text-sm">
+          <p className="font-semibold text-emerald-300">Clerk-only data source</p>
+          <p className="text-slate-400 mt-1">
+            This list excludes seeded demo users and manually added intern records. Only accounts with a linked Clerk ID are displayed and updated in real time.
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }
