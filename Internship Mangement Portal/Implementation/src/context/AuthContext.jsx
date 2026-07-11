@@ -61,9 +61,9 @@ export function AuthProvider({ children }) {
   const syncClerkSession = useCallback(async () => {
     clearTokens();
 
-    const token = await waitForClerkToken((opts) => getTokenRef.current(opts));
+    const token = await waitForClerkToken((opts) => getTokenRef.current(opts), 20, 250);
     if (!token) {
-      throw new Error('Clerk session token unavailable');
+      throw new Error('Clerk session token unavailable. Please refresh and try again.');
     }
 
     const appUser = await fetchCurrentUser(token);
@@ -82,6 +82,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
+    let safetyTimer;
 
     async function bootstrap() {
       if (hasStoredSession()) {
@@ -117,6 +118,20 @@ export function AuthProvider({ children }) {
         setSyncStatus('syncing');
       }
 
+      // Prevent infinite loading if API/Clerk hangs
+      safetyTimer = setTimeout(() => {
+        if (!cancelled) {
+          setSyncStatus((current) => {
+            if (current === 'syncing') {
+              setSyncError('Profile sync timed out. Please try again.');
+              setIsLoading(false);
+              return 'error';
+            }
+            return current;
+          });
+        }
+      }, 20000);
+
       try {
         await syncClerkSession();
       } catch (error) {
@@ -127,12 +142,16 @@ export function AuthProvider({ children }) {
           setSyncError(error?.message || 'Failed to sync portal profile');
         }
       } finally {
+        clearTimeout(safetyTimer);
         if (!cancelled) setIsLoading(false);
       }
     }
 
     bootstrap();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimer);
+    };
   }, [clerkLoaded, isSignedIn, syncClerkSession]);
 
   const loginSuperadmin = useCallback(async ({ email, password }) => {

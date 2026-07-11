@@ -141,8 +141,9 @@ export default function StudentOnboarding() {
     >
       {user?.portalAccessStatus === PORTAL_ACCESS_STATUS.REJECTED && (
         <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-700">
-          <p className="font-semibold mb-1">Previous application rejected</p>
-          <p>{user.portalAccess?.rejectionReason || 'Please resubmit with correct details.'}</p>
+          <p className="font-semibold mb-1">Previous application rejected — you can apply again</p>
+          <p className="mb-2">{user.portalAccess?.rejectionReason || 'Please resubmit with correct details.'}</p>
+          <p className="text-red-600/80">Choose a track below, update your details if needed, and submit a new application.</p>
         </div>
       )}
 

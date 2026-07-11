@@ -4,11 +4,13 @@ import AmbientBackground from '../components/common/AmbientBackground';
 
 export default function LandingLayout() {
   return (
-    <div className="relative min-h-screen bg-[#f8fafc] overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#f8fafc] overflow-x-hidden antialiased">
       <AmbientBackground />
       <div className="relative z-10">
         <LandingNavbar />
-        <Outlet />
+        <main>
+          <Outlet />
+        </main>
       </div>
     </div>
   );

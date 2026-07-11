@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Mail, Camera, RefreshCw, Briefcase, Building2, Clock, MapPin, User, FileText } from 'lucide-react';
+import { Mail, Camera, RefreshCw, Briefcase, Building2, Clock, MapPin, User, FileText, Shield } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
@@ -24,14 +24,138 @@ const PORTAL_STATUS_LABELS = {
 function ReadOnlyField({ label, value }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">{label}</p>
       <p className="text-sm font-medium text-gray-900">{value || '—'}</p>
     </div>
   );
 }
 
+function AdminSettings() {
+  const { user, refreshUser } = useAuth();
+  const fileInputRef = useRef(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [saving, setSaving] = useState(false);
+
+  const displayAvatar = avatarPreview || getAvatarUrl(user);
+
+  const handleAvatarFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result;
+      setAvatarPreview(dataUrl);
+      setSaving(true);
+      const result = await updateProfile({ avatar: dataUrl });
+      setSaving(false);
+      if (result.success) {
+        await refreshUser();
+        toast.success('Profile photo updated');
+      } else {
+        toast.error(result.error);
+        setAvatarPreview('');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const result = await updateProfile({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+    });
+    setSaving(false);
+    if (result.success) {
+      await refreshUser();
+      toast.success('Admin profile updated');
+    } else {
+      toast.error(result.error);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <Card glass>
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-2xl overflow-hidden ring-2 ring-slate-200">
+              <img src={displayAvatar} alt={user?.name} className="w-full h-full object-cover" />
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-2 -right-2 p-2 rounded-xl bg-emerald-600 text-white shadow-md hover:bg-emerald-500"
+              aria-label="Upload profile photo"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="w-4 h-4 text-emerald-600" />
+              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Superadmin Account</p>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">{user?.name}</h1>
+            <p className="text-gray-500 text-sm mt-1">{user?.email}</p>
+            <Badge className="mt-2 bg-emerald-50 text-emerald-700 border border-emerald-100">Password Login</Badge>
+          </div>
+        </div>
+      </Card>
+
+      <Card glass className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Profile Details</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="First Name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+          />
+          <Input
+            label="Last Name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+          />
+        </div>
+        <Input
+          label="Admin Email"
+          icon={Mail}
+          value={user?.email || ''}
+          disabled
+          helper="Superadmin email cannot be changed here."
+        />
+        <Button className="!from-emerald-600 !to-teal-500" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </Card>
+
+      <Card glass>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Login Credentials</h2>
+        <div className="space-y-3 text-sm">
+          <ReadOnlyField label="Email" value="superadmin@internhub.io" />
+          <ReadOnlyField label="Password" value="superadmin123" />
+          <p className="text-xs text-gray-500">
+            Use these credentials at /portal/superadmin/login. Run <code className="bg-gray-100 px-1 rounded text-gray-700">npm run seed</code> to reset the password if needed.
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function Settings() {
-  const { user, refreshUser, authMode } = useAuth();
+  const { user, refreshUser, authMode, isSuperadmin } = useAuth();
   const { user: clerkUser } = useUser();
   const fileInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState('');
@@ -44,7 +168,7 @@ export default function Settings() {
     refresh: refreshApplication,
   } = useRealtimePoll(fetchMyPortalAccess, {
     interval: 5000,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && !isSuperadmin,
   });
 
   useRealtimeStream(
@@ -53,8 +177,12 @@ export default function Settings() {
       refreshApplication(true);
       refreshUser();
     },
-    { enabled: Boolean(user) },
+    { enabled: Boolean(user) && !isSuperadmin },
   );
+
+  if (isSuperadmin) {
+    return <AdminSettings />;
+  }
 
   const portal = application?.portalAccess || user?.portalAccess || {};
   const internship = portal.internship || null;
@@ -217,16 +345,6 @@ export default function Settings() {
                     <MapPin className="w-3.5 h-3.5" />
                     <span>{internship?.type || 'Virtual'}</span>
                   </div>
-                  {internship?.spots != null && (
-                    <Badge variant="default">{internship.spots} spots available</Badge>
-                  )}
-                  {internship?.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {internship.tags.map((tag) => (
-                        <Badge key={tag} variant="default">{tag}</Badge>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">Internship details loading...</p>
@@ -237,16 +355,10 @@ export default function Settings() {
               <h3 className="font-bold text-slate-900 mb-4">Submission Status</h3>
               <div className="space-y-3 text-sm">
                 {portal.submittedAt && (
-                  <ReadOnlyField
-                    label="Submitted On"
-                    value={new Date(portal.submittedAt).toLocaleString()}
-                  />
+                  <ReadOnlyField label="Submitted On" value={new Date(portal.submittedAt).toLocaleString()} />
                 )}
                 {portal.reviewedAt && (
-                  <ReadOnlyField
-                    label="Reviewed On"
-                    value={new Date(portal.reviewedAt).toLocaleString()}
-                  />
+                  <ReadOnlyField label="Reviewed On" value={new Date(portal.reviewedAt).toLocaleString()} />
                 )}
                 {portal.rejectionReason && (
                   <div className="p-3 bg-red-50 rounded-lg border border-red-100">

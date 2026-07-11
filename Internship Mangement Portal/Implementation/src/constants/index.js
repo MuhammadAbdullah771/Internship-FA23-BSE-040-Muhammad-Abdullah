@@ -72,12 +72,13 @@ export const SUPERADMIN_NAV = [
   { label: 'Clerk Students', path: ROUTES.SUPERADMIN.INTERNS, icon: 'Users' },
   { label: 'Approvals', path: ROUTES.SUPERADMIN.APPROVALS, icon: 'UserCheck' },
   { label: 'Tasks', path: ROUTES.SUPERADMIN.TASKS, icon: 'ClipboardList' },
+  { label: 'Progress', path: ROUTES.SUPERADMIN.PROGRESS, icon: 'TrendingUp' },
   { label: 'Reports', path: ROUTES.SUPERADMIN.REPORTS, icon: 'BarChart3' },
   { label: 'Settings', path: ROUTES.SUPERADMIN.SETTINGS, icon: 'Settings' },
 ];
 
 export const STUDENT_NAV = [
-  { label: 'Internships', path: ROUTES.STUDENT.PORTAL, icon: 'Briefcase' },
+  { label: 'Internships', path: `${ROUTES.STUDENT.PORTAL}#internship-programs`, icon: 'Briefcase' },
   { label: 'Dashboard', path: ROUTES.STUDENT.DASHBOARD, icon: 'LayoutDashboard' },
   { label: 'My Applications', path: ROUTES.STUDENT.APPLICATIONS, icon: 'FileText' },
   { label: 'Tasks', path: ROUTES.STUDENT.TASKS, icon: 'ClipboardList' },
@@ -96,8 +97,7 @@ export function getHomePath(role) {
 export function getStudentAccessPath(user) {
   if (!user || user.role !== ROLES.STUDENT) return ROUTES.STUDENT.PORTAL;
 
-  const enrollmentStatus = user.portalAccess?.enrollmentStatus
-    || (user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED ? 'active' : 'none');
+  const enrollmentStatus = user.portalAccess?.enrollmentStatus || 'none';
 
   if (
     user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
@@ -108,7 +108,7 @@ export function getStudentAccessPath(user) {
 
   switch (user.portalAccessStatus) {
     case PORTAL_ACCESS_STATUS.APPROVED:
-      return ROUTES.STUDENT.PORTAL;
+      return ROUTES.STUDENT.DASHBOARD;
     case PORTAL_ACCESS_STATUS.PENDING:
       return ROUTES.STUDENT.PENDING_APPROVAL;
     case PORTAL_ACCESS_STATUS.REJECTED:
@@ -119,18 +119,19 @@ export function getStudentAccessPath(user) {
 }
 
 export function canStudentReapply(user) {
-  return user?.role === ROLES.STUDENT
-    && user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
+  if (user?.role !== ROLES.STUDENT) return false;
+  // Superadmin rejection → student can apply again
+  if (user.portalAccessStatus === PORTAL_ACCESS_STATUS.REJECTED) return true;
+  // Completed enrollment → student can apply to a new track
+  return user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
     && user.portalAccess?.enrollmentStatus === 'completed';
 }
 
 export function isStudentPortalApproved(user) {
-  const enrollmentStatus = user?.portalAccess?.enrollmentStatus
-    || (user?.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED ? 'active' : 'none');
-
-  return user?.role === ROLES.STUDENT
-    && user.portalAccessStatus === PORTAL_ACCESS_STATUS.APPROVED
-    && enrollmentStatus === 'active';
+  if (user?.role !== ROLES.STUDENT) return false;
+  if (user.portalAccessStatus !== PORTAL_ACCESS_STATUS.APPROVED) return false;
+  // Completed enrollments must re-apply; all other approved states can use the portal
+  return user.portalAccess?.enrollmentStatus !== 'completed';
 }
 
 export function getLoginPath(role) {

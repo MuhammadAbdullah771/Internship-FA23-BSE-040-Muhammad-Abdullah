@@ -33,18 +33,22 @@ export default function InternshipLoginPanel() {
               Welcome back, <strong>{user?.name}</strong>
             </p>
             <p className="text-sm text-gray-600 mb-6">
-              Browse internships below and click <strong>Apply Now</strong> to submit your application.
+              {user?.portalAccessStatus === 'approved'
+                ? 'Your portal access is approved. Open your dashboard or tasks assigned by your admin.'
+                : 'Complete onboarding if needed, then browse internships below.'}
             </p>
             <div className="space-y-3">
               <Button
                 className="w-full !from-emerald-600 !to-teal-500"
-                onClick={() => navigate(ROUTES.STUDENT.DASHBOARD)}
+                onClick={() => navigate(getStudentAccessPath(user))}
               >
-                Go to Dashboard
+                Continue to Portal
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => navigate(ROUTES.STUDENT.TASKS)}>
-                View My Tasks
-              </Button>
+              {user?.portalAccessStatus === 'approved' && (
+                <Button variant="outline" className="w-full" onClick={() => navigate(ROUTES.STUDENT.TASKS)}>
+                  View My Tasks
+                </Button>
+              )}
             </div>
           </>
         ) : isLoading ? (

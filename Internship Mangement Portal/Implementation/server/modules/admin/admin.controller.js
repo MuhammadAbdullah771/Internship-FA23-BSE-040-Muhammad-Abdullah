@@ -21,3 +21,8 @@ export const reports = asyncHandler(async (_req, res) => {
   const data = await adminService.getAdminReports();
   return res.status(200).json({ success: true, data });
 });
+
+export const progress = asyncHandler(async (_req, res) => {
+  const data = await adminService.getStudentProgress();
+  return res.status(200).json({ success: true, data });
+});

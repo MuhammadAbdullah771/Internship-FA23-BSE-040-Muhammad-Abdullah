@@ -295,3 +295,66 @@ export async function getAdminReports() {
     securityMetrics: dashboard.securityMetrics,
   };
 }
+
+export async function getStudentProgress() {
+  const students = await User.find(CLERK_STUDENT_FILTER)
+    .sort({ 'portalAccess.reviewedAt': -1, createdAt: -1 })
+    .limit(100);
+
+  const enriched = await Promise.all(students.map((user) => enrichPortalAccessPosting(user)));
+  const studentIds = enriched.map((user) => user._id);
+
+  const tasks = await Task.find({ assigneeId: { $in: studentIds } }).lean();
+  const tasksByStudent = new Map();
+
+  tasks.forEach((task) => {
+    const key = task.assigneeId?.toString();
+    if (!key) return;
+    if (!tasksByStudent.has(key)) {
+      tasksByStudent.set(key, { total: 0, todo: 0, inProgress: 0, review: 0, completed: 0 });
+    }
+    const bucket = tasksByStudent.get(key);
+    bucket.total += 1;
+    if (task.status === 'todo') bucket.todo += 1;
+    else if (task.status === 'in_progress') bucket.inProgress += 1;
+    else if (task.status === 'review') bucket.review += 1;
+    else if (task.status === 'done') bucket.completed += 1;
+  });
+
+  const progress = enriched.map((user) => {
+    const dto = toUserDTO(user);
+    const taskStats = tasksByStudent.get(user._id.toString()) || {
+      total: 0, todo: 0, inProgress: 0, review: 0, completed: 0,
+    };
+    const progressPercent = taskStats.total
+      ? Math.round((taskStats.completed / taskStats.total) * 100)
+      : 0;
+
+    return {
+      id: dto.id,
+      name: dto.portalAccess?.fullName || dto.name,
+      email: dto.email,
+      avatar: dto.avatar,
+      portalAccessStatus: dto.portalAccessStatus,
+      enrollmentStatus: dto.portalAccess?.enrollmentStatus || 'none',
+      internshipTitle: dto.portalAccess?.internshipTitle || dto.portalAccess?.internship?.title || '',
+      institute: dto.portalAccess?.institute || '',
+      taskStats: {
+        ...taskStats,
+        progressPercent,
+      },
+    };
+  });
+
+  return {
+    students: progress,
+    summary: {
+      totalStudents: progress.length,
+      activeEnrollments: progress.filter((s) => s.enrollmentStatus === 'active').length,
+      withTasks: progress.filter((s) => s.taskStats.total > 0).length,
+      avgProgress: progress.length
+        ? Math.round(progress.reduce((sum, s) => sum + s.taskStats.progressPercent, 0) / progress.length)
+        : 0,
+    },
+  };
+}

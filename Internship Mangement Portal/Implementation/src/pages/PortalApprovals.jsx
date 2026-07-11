@@ -18,8 +18,8 @@ import { useRealtimeStream } from '../hooks/useRealtimeStream';
 function Detail({ label, value }) {
   if (!value) return null;
   return (
-    <p className="text-sm text-slate-300">
-      <span className="text-slate-500">{label}:</span> {value}
+    <p className="text-sm text-gray-600">
+      <span className="text-gray-500">{label}:</span> {value}
     </p>
   );
 }
@@ -82,13 +82,13 @@ export default function PortalApprovals() {
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Portal Access Approvals</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Portal Access Approvals</h1>
+          <p className="text-sm text-gray-500 mt-1">
             Review student applications in real time
             {lastUpdated ? ` · updated ${lastUpdated.toLocaleTimeString()}` : ''}
           </p>
         </div>
-        <Button variant="outline" onClick={loadAll} className="border-slate-700 text-slate-200">
+        <Button variant="outline" onClick={loadAll}>
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -99,7 +99,7 @@ export default function PortalApprovals() {
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : applications.length === 0 ? (
-        <Card className="bg-slate-800/50 border-slate-700 p-10 text-center text-slate-400">
+        <Card glass className="p-10 text-center text-gray-500">
           No pending applications right now.
         </Card>
       ) : (
@@ -111,20 +111,20 @@ export default function PortalApprovals() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
             >
-              <Card className="bg-slate-800/60 border-slate-700 p-5">
+              <Card glass className="p-5">
                 <div className="flex flex-col xl:flex-row gap-5 xl:items-start xl:justify-between">
                   <div className="flex gap-4 min-w-0">
                     <Avatar src={app.avatar} name={app.name} size="lg" />
                     <div className="min-w-0 space-y-1">
-                      <h3 className="font-semibold text-white">
+                      <h3 className="font-semibold text-gray-900">
                         {app.portalAccess?.fullName || app.name}
                       </h3>
-                      <p className="text-sm text-slate-400">{app.email}</p>
+                      <p className="text-sm text-gray-500">{app.email}</p>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100">
                           {app.portalAccess?.internshipTitle || 'Internship'}
                         </Badge>
-                        <Badge className="bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                        <Badge variant="warning">
                           Pending
                         </Badge>
                       </div>
@@ -135,7 +135,7 @@ export default function PortalApprovals() {
                         <Detail label="Contact" value={app.portalAccess?.contactNumber} />
                       </div>
                       {app.portalAccess?.notes && (
-                        <p className="text-sm text-slate-300 mt-2">{app.portalAccess.notes}</p>
+                        <p className="text-sm text-gray-600 mt-2">{app.portalAccess.notes}</p>
                       )}
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export default function PortalApprovals() {
                         href={app.portalAccess.cvPdf}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-600 text-slate-200 text-sm hover:bg-slate-700"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-gray-700 text-sm hover:bg-gray-50"
                       >
                         <FileText className="w-4 h-4" />
                         View CV
@@ -157,7 +157,7 @@ export default function PortalApprovals() {
                         href={app.portalAccess.paymentScreenshot}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-600 text-slate-200 text-sm hover:bg-slate-700"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-gray-700 text-sm hover:bg-gray-50"
                       >
                         <ImageIcon className="w-4 h-4" />
                         View Payment
@@ -172,7 +172,7 @@ export default function PortalApprovals() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-red-500/30 text-red-300 hover:bg-red-500/10"
+                      className="border-red-200 text-red-600 hover:bg-red-50"
                       onClick={() => handleReview(app.id, 'reject')}
                     >
                       <XCircle className="w-4 h-4 mr-2" />
@@ -188,11 +188,11 @@ export default function PortalApprovals() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-emerald-600" />
             Active Enrollments
           </h2>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             One internship per student. Mark complete when finished so they can apply again.
           </p>
         </div>
@@ -202,28 +202,28 @@ export default function PortalApprovals() {
             <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : activeEnrollments.length === 0 ? (
-          <Card className="bg-slate-800/50 border-slate-700 p-8 text-center text-slate-400">
+          <Card glass className="p-8 text-center text-gray-500">
             No active enrollments.
           </Card>
         ) : (
           <div className="grid gap-3">
             {activeEnrollments.map((student) => (
-              <Card key={student.id} className="bg-slate-800/60 border-slate-700 p-4">
+              <Card key={student.id} glass className="p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar src={student.avatar} name={student.name} />
                     <div className="min-w-0">
-                      <p className="font-medium text-white truncate">
+                      <p className="font-medium text-gray-900 truncate">
                         {student.portalAccess?.fullName || student.name}
                       </p>
-                      <p className="text-sm text-slate-400 truncate">{student.email}</p>
-                      <Badge className="mt-1 bg-blue-500/15 text-blue-300 border border-blue-500/20">
+                      <p className="text-sm text-gray-500 truncate">{student.email}</p>
+                      <Badge className="mt-1 bg-blue-50 text-blue-700 border border-blue-100">
                         {student.portalAccess?.internshipTitle || 'Internship'}
                       </Badge>
                     </div>
                   </div>
                   <Button
-                    className="!from-violet-600 !to-indigo-500 shrink-0"
+                    className="!from-emerald-600 !to-teal-500 shrink-0"
                     onClick={() => handleCompleteEnrollment(
                       student.id,
                       student.portalAccess?.fullName || student.name,

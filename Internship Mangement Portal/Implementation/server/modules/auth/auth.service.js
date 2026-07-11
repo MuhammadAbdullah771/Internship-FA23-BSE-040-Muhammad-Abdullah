@@ -61,11 +61,18 @@ export async function syncAvatarFromClerk(user) {
   const client = getClerkClient();
   if (!client) return user;
 
-  const clerkUser = await client.users.getUser(user.clerkId);
-  if (clerkUser.imageUrl && clerkUser.imageUrl !== user.avatar) {
-    user.avatar = clerkUser.imageUrl;
-    await user.save();
-    broadcastToUser(user._id.toString(), 'profile:updated', { userId: user._id.toString() });
+  try {
+    const clerkUser = await client.users.getUser(user.clerkId);
+    if (clerkUser.imageUrl && clerkUser.imageUrl !== user.avatar) {
+      user.avatar = clerkUser.imageUrl;
+      await user.save();
+      broadcastToUser(user._id.toString(), 'profile:updated', { userId: user._id.toString() });
+    }
+  } catch (error) {
+    // Never fail profile load because Clerk avatar sync is unavailable
+    if (env.isDev) {
+      console.warn('[auth] Avatar sync skipped:', error?.message || error);
+    }
   }
 
   return user;
@@ -73,6 +80,8 @@ export async function syncAvatarFromClerk(user) {
 
 export async function syncClerkUser({ clerkId, email, firstName, lastName, imageUrl }) {
   const normalizedEmail = email.toLowerCase().trim();
+  const safeFirstName = (firstName?.trim() || 'Student').slice(0, 80);
+  const safeLastName = (lastName?.trim() || 'User').slice(0, 80);
 
   let user = await User.findOne({ clerkId });
   if (user) {
@@ -90,22 +99,41 @@ export async function syncClerkUser({ clerkId, email, firstName, lastName, image
     }
     user.clerkId = clerkId;
     if (imageUrl) user.avatar = imageUrl;
+    if (!user.firstName) user.firstName = safeFirstName;
+    if (!user.lastName) user.lastName = safeLastName;
     await user.save();
     broadcastToRole(ROLES.SUPERADMIN, 'students:updated', { userId: user._id.toString() });
     return user;
   }
 
-  const created = await User.create({
-    clerkId,
-    email: normalizedEmail,
-    firstName: firstName?.trim() || 'Student',
-    lastName: lastName?.trim() || '',
-    role: ROLES.STUDENT,
-    avatar: imageUrl || buildAvatar(normalizedEmail),
-    portalAccess: { status: 'unsubmitted' },
-  });
-  broadcastToRole(ROLES.SUPERADMIN, 'students:updated', { userId: created._id.toString() });
-  return created;
+  try {
+    const created = await User.create({
+      clerkId,
+      email: normalizedEmail,
+      firstName: safeFirstName,
+      lastName: safeLastName,
+      role: ROLES.STUDENT,
+      avatar: imageUrl || buildAvatar(normalizedEmail),
+      portalAccess: { status: 'unsubmitted', enrollmentStatus: 'none' },
+    });
+    broadcastToRole(ROLES.SUPERADMIN, 'students:updated', { userId: created._id.toString() });
+    return created;
+  } catch (error) {
+    if (error?.code === 11000) {
+      const existing = await User.findOne({
+        $or: [{ clerkId }, { email: normalizedEmail }],
+      });
+      if (existing) {
+        if (!existing.clerkId) {
+          existing.clerkId = clerkId;
+          if (imageUrl) existing.avatar = imageUrl;
+          await existing.save();
+        }
+        return existing;
+      }
+    }
+    throw error;
+  }
 }
 
 function parseDurationToMs(duration) {
@@ -207,6 +235,15 @@ export async function getProfile(userId) {
   let user = await User.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  // Heal legacy approved students missing an active enrollment flag
+  if (
+    user.portalAccess?.status === 'approved'
+    && (!user.portalAccess.enrollmentStatus || user.portalAccess.enrollmentStatus === 'none')
+  ) {
+    user.portalAccess.enrollmentStatus = 'active';
+    await user.save();
   }
 
   if (user.clerkId) {

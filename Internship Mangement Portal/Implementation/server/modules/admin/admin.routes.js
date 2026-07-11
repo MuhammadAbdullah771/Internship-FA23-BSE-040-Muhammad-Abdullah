@@ -26,4 +26,11 @@ router.get(
   adminController.reports,
 );
 
+router.get(
+  '/progress',
+  authenticate,
+  authorize(ROLES.SUPERADMIN),
+  adminController.progress,
+);
+
 export default router;

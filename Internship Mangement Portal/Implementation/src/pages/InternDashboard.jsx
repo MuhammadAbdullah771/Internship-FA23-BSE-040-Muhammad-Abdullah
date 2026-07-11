@@ -1,4 +1,3 @@
-import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -16,6 +15,8 @@ import CertificatePanel from '../components/student/CertificatePanel';
 import { useAuth } from '../context/AuthContext';
 import { useAppPaths } from '../hooks/useAppPaths';
 import { fetchStudentDashboard } from '../services/studentService';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 
 const statIcons = { CheckCircle, TrendingUp, Clock, Star };
 
@@ -62,24 +63,9 @@ export default function InternDashboard() {
   const firstName = user?.name?.split(' ')[0] || 'Student';
   const fullName = user?.name || 'Student';
 
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { data: dashboard, loading, refresh } = useRealtimePoll(fetchStudentDashboard, { interval: 10000 });
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await fetchStudentDashboard();
-      setDashboard(data);
-    } catch {
-      toast.error('Failed to load dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  useRealtimeStream(['tasks:updated', 'portal-access:updated'], () => refresh(true));
 
   const handleRequestVerification = () => {
     toast.success('Verification request sent to your mentor');
@@ -89,10 +75,19 @@ export default function InternDashboard() {
     toast.success('Certificate download will be available once verified');
   };
 
-  if (loading) {
+  if (loading && !dashboard) {
     return (
       <div className="flex justify-center py-20">
         <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-gray-500">Could not load your dashboard.</p>
+        <Button onClick={() => refresh(false)}>Try again</Button>
       </div>
     );
   }

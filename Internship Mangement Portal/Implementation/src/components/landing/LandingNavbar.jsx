@@ -10,7 +10,7 @@ import { cn } from '../../utils';
 import { softTap } from '../../utils/landingMotion';
 
 function NavItem({ item, onClick }) {
-  const className = 'relative flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors py-1 group';
+  const className = 'relative flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors py-0.5 group';
   const content = (
     <>
       {item.label}
@@ -45,18 +45,18 @@ export default function LandingNavbar() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex items-center justify-between h-16 lg:h-[4.5rem]"
+          className="flex items-center justify-between h-14 lg:h-16"
         >
           <Link to={ROUTES.LANDING} className="flex items-center gap-2.5 shrink-0 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform">
-              <GraduationCap className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-500/25 group-hover:scale-105 transition-transform">
+              <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xl font-extrabold text-slate-900 tracking-tight">
+            <span className="text-lg font-extrabold text-slate-900 tracking-tight">
               Intern<span className="text-gradient">Hub</span>
             </span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-7">
             {LANDING_NAV.map((item, i) => (
               <motion.div
                 key={item.label}
@@ -72,7 +72,7 @@ export default function LandingNavbar() {
           <div className="hidden lg:flex items-center gap-3">
             <Link
               to={ROUTES.STUDENT.LOGIN}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-emerald-500/20 hover:shadow-lg hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-emerald-500/20 hover:shadow-lg"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Internship Portal

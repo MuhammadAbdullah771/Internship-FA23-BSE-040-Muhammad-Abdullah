@@ -14,6 +14,17 @@ const clerkClient = env.clerk.secretKey?.startsWith('sk_')
 async function resolveUserFromToken(token) {
   if (!token) return null;
 
+  // App JWTs (superadmin) use HS256 — skip Clerk to avoid jwk-kid-mismatch noise.
+  try {
+    const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString('utf8'));
+    if (header?.alg === 'HS256') {
+      const payload = verifyAccessToken(token);
+      return User.findById(payload.sub);
+    }
+  } catch {
+    // continue
+  }
+
   if (clerkClient) {
     try {
       const payload = await verifyToken(token, {

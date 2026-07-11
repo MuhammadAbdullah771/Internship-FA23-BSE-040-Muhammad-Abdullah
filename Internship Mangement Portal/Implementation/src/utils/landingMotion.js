@@ -2,11 +2,11 @@ export const easeOut = [0.22, 1, 0.36, 1];
 export const easeSpring = [0.16, 1, 0.3, 1];
 
 export const fadeUp = {
-  hidden: { opacity: 0, y: 32 },
+  hidden: { opacity: 0, y: 20 },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.65, delay: i * 0.1, ease: easeOut },
+    transition: { duration: 0.5, delay: i * 0.08, ease: easeOut },
   }),
 };
 
@@ -79,19 +79,19 @@ export const sectionFade = {
 };
 
 export const cardReveal = {
-  hidden: { opacity: 0, y: 26, scale: 0.97 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.55, delay: i * 0.07, ease: easeSpring },
+    transition: { duration: 0.45, delay: i * 0.06, ease: easeSpring },
   }),
 };
 
 export const softHoverLift = {
-  y: -8,
-  scale: 1.01,
-  transition: { duration: 0.25, ease: easeOut },
+  y: -4,
+  scale: 1.005,
+  transition: { duration: 0.22, ease: easeOut },
 };
 
 export const softTap = {

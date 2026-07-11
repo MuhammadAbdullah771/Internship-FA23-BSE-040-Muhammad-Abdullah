@@ -26,6 +26,15 @@ export async function createTask(payload) {
   }
 }
 
+export async function deleteTask(id) {
+  try {
+    await api.delete(`/tasks/${id}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: extractError(error) };
+  }
+}
+
 export async function updateTaskStatus(id, status) {
   try {
     const { data } = await api.patch(`/tasks/${id}`, { status });

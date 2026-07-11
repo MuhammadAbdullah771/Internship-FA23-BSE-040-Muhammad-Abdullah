@@ -1,8 +1,7 @@
 export const LANDING_NAV = [
   { label: 'Home', href: '#home' },
-  { label: 'Internships', href: '/portal/student' },
+  { label: 'Internships', href: '#internships' },
   { label: 'Startup Journey', href: '#startup' },
-  { label: 'Resources', href: '#resources', hasDropdown: true },
 ];
 
 export const PARTNERS = [

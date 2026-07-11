@@ -57,26 +57,26 @@ export default function Reports() {
     return (
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">Reports &amp; Analytics</h1>
-          <p className="text-slate-400 mt-1">Live metrics from Clerk-authenticated students only.</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Reports &amp; Analytics</h1>
+          <p className="text-gray-500 mt-1">Live metrics from Clerk-authenticated students only.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <DashboardCard label="Clerk Students" value={String(stats?.totalClerkStudents ?? 0)} change="Live" icon={Users} dark iconColor="bg-emerald-500/15 text-emerald-400" />
-          <DashboardCard label="Approved" value={String(stats?.approvedStudents ?? 0)} change="Portal access" icon={CheckCircle} dark iconColor="bg-blue-500/15 text-blue-400" />
-          <DashboardCard label="Active Enrollments" value={String(stats?.activeEnrollments ?? 0)} change="In progress" icon={TrendingUp} dark iconColor="bg-violet-500/15 text-violet-400" />
-          <DashboardCard label="Applications" value={String(stats?.totalApplications ?? 0)} change={`${stats?.pendingApplications ?? 0} pending`} icon={Briefcase} dark iconColor="bg-amber-500/15 text-amber-400" />
+          <DashboardCard label="Clerk Students" value={String(stats?.totalClerkStudents ?? 0)} change="Live" icon={Users} iconColor="bg-emerald-50 text-emerald-600" />
+          <DashboardCard label="Approved" value={String(stats?.approvedStudents ?? 0)} change="Portal access" icon={CheckCircle} iconColor="bg-blue-50 text-blue-600" />
+          <DashboardCard label="Active Enrollments" value={String(stats?.activeEnrollments ?? 0)} change="In progress" icon={TrendingUp} iconColor="bg-violet-50 text-violet-600" />
+          <DashboardCard label="Applications" value={String(stats?.totalApplications ?? 0)} change={`${stats?.pendingApplications ?? 0} pending`} icon={Briefcase} iconColor="bg-amber-50 text-amber-600" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 bg-slate-800/50 border-slate-700/60">
-            <h2 className="text-lg font-semibold text-white mb-1">Clerk Signups Over Time</h2>
-            <p className="text-sm text-slate-400 mb-4">Weekly new student accounts</p>
-            <AreaLineChart data={charts.signupsOverTime} emptyMessage="No Clerk signups recorded yet" dark />
+          <Card glass className="lg:col-span-2">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Clerk Signups Over Time</h2>
+            <p className="text-sm text-gray-500 mb-4">Weekly new student accounts</p>
+            <AreaLineChart data={charts.signupsOverTime} emptyMessage="No Clerk signups recorded yet" />
           </Card>
-          <Card className="bg-slate-800/50 border-slate-700/60">
-            <h2 className="text-lg font-semibold text-white mb-1">Portal Status</h2>
-            <p className="text-sm text-slate-400 mb-4">Application pipeline breakdown</p>
+          <Card glass>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Portal Status</h2>
+            <p className="text-sm text-gray-500 mb-4">Application pipeline breakdown</p>
             <DepartmentDonut
               data={charts.portalStatusChart}
               centerLabel={stats ? `${stats.totalClerkStudents} Students` : '0 Students'}
@@ -85,10 +85,10 @@ export default function Reports() {
           </Card>
         </div>
 
-        <Card className="bg-slate-800/50 border-slate-700/60">
-          <h2 className="text-lg font-semibold text-white mb-1">Applications by Internship</h2>
-          <p className="text-sm text-slate-400 mb-4">Real application volume per posting</p>
-          <BarChartComponent data={charts.applicationsByPosting} emptyMessage="No applications from Clerk students yet" dark />
+        <Card glass>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Applications by Internship</h2>
+          <p className="text-sm text-gray-500 mb-4">Real application volume per posting</p>
+          <BarChartComponent data={charts.applicationsByPosting} emptyMessage="No applications from Clerk students yet" />
         </Card>
       </div>
     );

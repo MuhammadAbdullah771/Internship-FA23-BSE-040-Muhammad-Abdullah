@@ -31,7 +31,8 @@ export default function StudentAuthCallback() {
             {syncError ? ` (${syncError})` : ''}
           </p>
           <p className="text-sm text-gray-500 mb-6">
-            Open the app at <strong>http://localhost:5173</strong> and make sure <code className="text-xs bg-gray-100 px-1 rounded">npm run dev</code> is running.
+            Make sure the API is running with <code className="text-xs bg-gray-100 px-1 rounded">npm run dev</code>,
+            then click Try again. If it still fails, confirm Clerk keys in <code className="text-xs bg-gray-100 px-1 rounded">.env</code> match the same application.
           </p>
           <div className="flex flex-col gap-3">
             <Button onClick={retrySync}>Try again</Button>

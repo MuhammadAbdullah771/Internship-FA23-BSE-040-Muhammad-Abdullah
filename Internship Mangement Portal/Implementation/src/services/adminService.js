@@ -14,3 +14,8 @@ export async function fetchAdminReports() {
   const { data } = await api.get('/admin/reports');
   return data.data;
 }
+
+export async function fetchAdminProgress() {
+  const { data } = await api.get('/admin/progress');
+  return data.data;
+}

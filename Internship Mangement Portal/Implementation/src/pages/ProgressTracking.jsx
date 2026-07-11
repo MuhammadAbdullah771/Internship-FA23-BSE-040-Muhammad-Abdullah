@@ -1,14 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
-import { Check, ExternalLink } from 'lucide-react';
+import { Check, ExternalLink, RefreshCw, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import Avatar from '../components/ui/Avatar';
 import DonutChart from '../components/charts/DonutChart';
 import { useAuth } from '../context/AuthContext';
 import { useAppPaths } from '../hooks/useAppPaths';
 import { fetchStudentDashboard } from '../services/studentService';
+import { fetchAdminProgress } from '../services/adminService';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
+import { ROUTES } from '../constants';
 
 const STATUS_MILESTONES = [
   { key: 'onboarding', title: 'Portal Onboarding', description: 'Complete your portal access application' },
@@ -18,6 +24,110 @@ const STATUS_MILESTONES = [
   { key: 'all_done', title: 'All Tasks Complete', description: 'Finish every assigned task' },
   { key: 'certificate', title: 'Certificate Ready', description: 'Earn your internship certificate' },
 ];
+
+function AdminProgressView() {
+  const { data, loading, lastUpdated, refresh } = useRealtimePoll(fetchAdminProgress, { interval: 10000 });
+
+  useRealtimeStream(
+    ['students:updated', 'portal-access:reviewed', 'tasks:updated'],
+    () => refresh(true),
+  );
+
+  const students = data?.students || [];
+  const summary = data?.summary || {};
+
+  if (loading && !data) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Student Progress"
+        subtitle="Live internship progress for Clerk-authenticated students."
+        actions={(
+          <Button variant="outline" icon={RefreshCw} onClick={() => refresh(false)}>
+            Refresh
+          </Button>
+        )}
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Clerk Students', value: summary.totalStudents ?? 0 },
+          { label: 'Active Enrollments', value: summary.activeEnrollments ?? 0 },
+          { label: 'With Tasks', value: summary.withTasks ?? 0 },
+          { label: 'Avg Progress', value: `${summary.avgProgress ?? 0}%` },
+        ].map((item) => (
+          <Card key={item.label} glass className="p-4">
+            <p className="text-xs text-gray-500">{item.label}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{item.value}</p>
+          </Card>
+        ))}
+      </div>
+
+      {lastUpdated && (
+        <p className="text-xs text-gray-500">Updated {lastUpdated.toLocaleTimeString()}</p>
+      )}
+
+      {students.length === 0 ? (
+        <Card glass className="p-12 text-center">
+          <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">No Clerk students yet</p>
+          <p className="text-sm text-gray-500 mt-1">Progress appears after students sign in with Clerk.</p>
+        </Card>
+      ) : (
+        <div className="grid gap-3">
+          {students.map((student) => (
+            <Card key={student.id} glass className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar src={student.avatar} name={student.name} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{student.name}</p>
+                    <p className="text-sm text-gray-500 truncate">{student.email}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+                      {student.internshipTitle || 'No internship'} · {student.institute || '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant={student.portalAccessStatus === 'approved' ? 'success' : 'warning'}>
+                    {student.portalAccessStatus}
+                  </Badge>
+                  <Badge variant={student.enrollmentStatus === 'active' ? 'success' : 'default'}>
+                    {student.enrollmentStatus}
+                  </Badge>
+                  <div className="min-w-[140px]">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Tasks</span>
+                      <span>{student.taskStats.completed}/{student.taskStats.total}</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full"
+                        style={{ width: `${student.taskStats.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <Link to={ROUTES.SUPERADMIN.TASKS}>
+                    <Button size="sm" variant="outline">
+                      Tasks
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProgressTracking() {
   const { user, isStudent } = useAuth();
@@ -43,14 +153,7 @@ export default function ProgressTracking() {
   }, [loadProgress]);
 
   if (!isStudent) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Progress Tracking</h1>
-        <Card glass hover>
-          <p className="text-gray-500 text-center py-12">Use the admin dashboard to view intern progress.</p>
-        </Card>
-      </div>
-    );
+    return <AdminProgressView />;
   }
 
   if (loading) {

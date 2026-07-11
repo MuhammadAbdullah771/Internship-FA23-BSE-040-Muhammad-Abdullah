@@ -146,6 +146,7 @@ export async function submitPortalAccess(userId, payload) {
     throw new AppError('Your application is already under review', 409, 'ALREADY_PENDING');
   }
 
+  // Rejected and completed enrollments may submit a new application
   const enrollmentStatus = user.portalAccess?.enrollmentStatus || 'none';
   if (user.portalAccess?.status === 'approved' && enrollmentStatus === 'active') {
     throw new AppError(
@@ -202,6 +203,7 @@ export async function submitPortalAccess(userId, payload) {
 export async function listPendingApplications() {
   const users = await User.find({
     role: ROLES.STUDENT,
+    clerkId: { $exists: true, $ne: null },
     'portalAccess.status': 'pending',
   }).sort({ 'portalAccess.submittedAt': -1 });
 
@@ -224,6 +226,9 @@ export async function reviewPortalAccess(adminId, studentId, { action, rejection
   } else {
     user.portalAccess.status = 'rejected';
     user.portalAccess.rejectionReason = rejectionReason?.trim() || 'Application rejected by admin.';
+    // Rejected students may submit a new application
+    user.portalAccess.enrollmentStatus = 'none';
+    user.portalAccess.enrollmentCompletedAt = null;
   }
 
   user.portalAccess.reviewedAt = new Date();
@@ -250,6 +255,7 @@ export async function reviewPortalAccess(adminId, studentId, { action, rejection
 export async function listActiveEnrollments() {
   const users = await User.find({
     role: ROLES.STUDENT,
+    clerkId: { $exists: true, $ne: null },
     'portalAccess.status': 'approved',
     'portalAccess.enrollmentStatus': 'active',
   }).sort({ 'portalAccess.reviewedAt': -1 });

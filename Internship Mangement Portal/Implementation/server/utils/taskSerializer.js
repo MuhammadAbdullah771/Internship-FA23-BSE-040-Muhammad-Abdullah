@@ -29,9 +29,10 @@ export function toTaskDTO(task) {
     comments: task.comments,
     dueDate: task.dueDate,
     assigneeId: task.assigneeId?._id?.toString() ?? task.assigneeId?.toString() ?? null,
-    assigneeName: assignee?.fullName ?? assignee?.firstName
-      ? `${assignee.firstName} ${assignee.lastName}`.trim()
-      : null,
+    assigneeName: assignee?.fullName
+      || (assignee?.firstName
+        ? `${assignee.firstName} ${assignee.lastName || ''}`.trim()
+        : null),
     submission: task.submission
       ? {
           githubLink: task.submission.githubLink || '',

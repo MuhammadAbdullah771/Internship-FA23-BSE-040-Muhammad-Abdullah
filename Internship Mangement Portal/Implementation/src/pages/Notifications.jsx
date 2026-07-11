@@ -13,13 +13,13 @@ import { useRealtimeStream } from '../hooks/useRealtimeStream';
 import { ROUTES } from '../constants';
 
 const iconMap = {
-  deadline: { icon: Clock, color: 'bg-red-500/15 text-red-400' },
-  task: { icon: CheckSquare, color: 'bg-emerald-500/15 text-emerald-400' },
-  feedback: { icon: MessageCircle, color: 'bg-amber-500/15 text-amber-400' },
-  system: { icon: Info, color: 'bg-blue-500/15 text-blue-400' },
-  application: { icon: Briefcase, color: 'bg-violet-500/15 text-violet-400' },
-  portal: { icon: FileText, color: 'bg-cyan-500/15 text-cyan-400' },
-  signup: { icon: UserPlus, color: 'bg-emerald-500/15 text-emerald-400' },
+  deadline: { icon: Clock, color: 'bg-red-50 text-red-500' },
+  task: { icon: CheckSquare, color: 'bg-emerald-50 text-emerald-600' },
+  feedback: { icon: MessageCircle, color: 'bg-amber-50 text-amber-600' },
+  system: { icon: Info, color: 'bg-blue-50 text-blue-600' },
+  application: { icon: Briefcase, color: 'bg-violet-50 text-violet-600' },
+  portal: { icon: FileText, color: 'bg-cyan-50 text-cyan-600' },
+  signup: { icon: UserPlus, color: 'bg-emerald-50 text-emerald-600' },
 };
 
 function buildStudentNotifications(dashboard, applications, paths) {
@@ -207,12 +207,11 @@ export default function Notifications() {
         title="Notifications"
         subtitle={isStudent ? 'Alerts about tasks, deadlines, and applications.' : 'Live alerts from Clerk students and portal activity.'}
         eyebrow="Inbox"
-        dark={!isStudent}
       />
 
       {groups.map((group) => (
         <div key={group}>
-          <h2 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isStudent ? 'text-gray-400' : 'text-slate-500'}`}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3 text-gray-400">
             {group}
           </h2>
           <div className="space-y-3">
@@ -223,14 +222,8 @@ export default function Notifications() {
                 return (
                   <Card
                     key={notif.id}
-                    className={`!p-4 ${notif.unread
-                      ? isStudent
-                        ? 'bg-primary-50/50 border-primary-100'
-                        : 'bg-emerald-500/5 border-emerald-500/20'
-                      : isStudent
-                        ? ''
-                        : 'bg-slate-800/40 border-slate-700/60'
-                    }`}
+                    glass
+                    className={`!p-4 ${notif.unread ? 'bg-primary-50/50 border-primary-100' : ''}`}
                   >
                     <div className="flex gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
@@ -238,12 +231,12 @@ export default function Notifications() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className={`text-sm font-semibold ${isStudent ? 'text-gray-900' : 'text-white'}`}>{notif.title}</h3>
-                          {notif.time && <span className={`text-xs shrink-0 ${isStudent ? 'text-gray-400' : 'text-slate-500'}`}>{notif.time}</span>}
+                          <h3 className="text-sm font-semibold text-gray-900">{notif.title}</h3>
+                          {notif.time && <span className="text-xs shrink-0 text-gray-400">{notif.time}</span>}
                         </div>
-                        <p className={`text-sm mt-1 ${isStudent ? 'text-gray-500' : 'text-slate-400'}`}>{notif.description}</p>
+                        <p className="text-sm mt-1 text-gray-500">{notif.description}</p>
                         {notif.link && (
-                          <Link to={notif.link.to} className="text-sm font-medium text-emerald-500 hover:text-emerald-400 mt-2 inline-block">
+                          <Link to={notif.link.to} className="text-sm font-medium text-emerald-600 hover:text-emerald-500 mt-2 inline-block">
                             {notif.link.text}
                           </Link>
                         )}

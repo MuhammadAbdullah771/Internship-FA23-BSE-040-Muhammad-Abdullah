@@ -24,7 +24,21 @@ const clerkClient = isClerkConfigured()
   })
   : null;
 
+/** Detect our app JWT (HS256) vs Clerk session JWT (usually RS256). */
+function isAppJwt(token) {
+  try {
+    const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString('utf8'));
+    return header?.alg === 'HS256';
+  } catch {
+    return false;
+  }
+}
+
 async function authenticateWithClerk(token) {
+  if (!clerkClient) {
+    throw new AppError('Clerk is not configured on the server', 500, 'CLERK_NOT_CONFIGURED');
+  }
+
   const verifyOptions = {
     secretKey: env.clerk.secretKey,
     clockSkewInMs: env.isDev ? 120_000 : 10_000,
@@ -34,7 +48,28 @@ async function authenticateWithClerk(token) {
     verifyOptions.authorizedParties = [...new Set([env.clientUrl, ...env.corsOrigin])];
   }
 
-  const payload = await verifyToken(token, verifyOptions);
+  let payload;
+  try {
+    payload = await verifyToken(token, verifyOptions);
+  } catch (error) {
+    const reason = error?.reason || error?.message || 'token-invalid';
+    if (reason === 'token-iat-in-the-future') {
+      throw new AppError(
+        'Server clock is behind Clerk. Sync your system time and try again.',
+        401,
+        'UNAUTHORIZED',
+      );
+    }
+    if (reason === 'jwk-kid-mismatch') {
+      throw new AppError(
+        'Clerk keys mismatch. Ensure VITE_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are from the same Clerk application.',
+        401,
+        'CLERK_KEY_MISMATCH',
+      );
+    }
+    throw new AppError('Invalid or expired Clerk session. Please sign in again.', 401, 'UNAUTHORIZED');
+  }
+
   const clerkUserId = payload.sub;
 
   let user = await User.findOne({ clerkId: clerkUserId });
@@ -45,7 +80,20 @@ async function authenticateWithClerk(token) {
     return user;
   }
 
-  const clerkUser = await clerkClient.users.getUser(clerkUserId);
+  let clerkUser;
+  try {
+    clerkUser = await clerkClient.users.getUser(clerkUserId);
+  } catch (error) {
+    if (env.isDev) {
+      console.error('[auth] Failed to fetch Clerk user profile:', error?.message || error);
+    }
+    throw new AppError(
+      'Could not load your Clerk profile. Check CLERK_SECRET_KEY and try again.',
+      502,
+      'CLERK_PROFILE_FETCH_FAILED',
+    );
+  }
+
   const email = clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress
     ?? clerkUser.emailAddresses[0]?.emailAddress;
 
@@ -53,13 +101,31 @@ async function authenticateWithClerk(token) {
     throw new AppError('Clerk account has no email address', 400, 'NO_EMAIL');
   }
 
-  return syncClerkUser({
-    clerkId: clerkUserId,
-    email,
-    firstName: clerkUser.firstName,
-    lastName: clerkUser.lastName,
-    imageUrl: clerkUser.imageUrl,
-  });
+  try {
+    return await syncClerkUser({
+      clerkId: clerkUserId,
+      email,
+      firstName: clerkUser.firstName,
+      lastName: clerkUser.lastName,
+      imageUrl: clerkUser.imageUrl,
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if (error?.code === 11000) {
+      const existing = await User.findOne({
+        $or: [{ clerkId: clerkUserId }, { email: email.toLowerCase().trim() }],
+      });
+      if (existing) return existing;
+    }
+    if (env.isDev) {
+      console.error('[auth] syncClerkUser failed:', error);
+    }
+    throw new AppError(
+      error?.message || 'Failed to sync portal profile',
+      500,
+      'PROFILE_SYNC_FAILED',
+    );
+  }
 }
 
 async function authenticateWithJwt(token) {
@@ -81,30 +147,22 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   const token = header.slice(7);
   let user;
 
-  if (isClerkConfigured()) {
+  // Prefer app JWT for superadmin tokens so we never hit Clerk with HS256 JWTs.
+  if (isAppJwt(token)) {
     try {
-      user = await authenticateWithClerk(token);
-    } catch (clerkError) {
-      if (clerkError instanceof AppError) {
-        throw clerkError;
-      }
-
-      if (env.isDev) {
-        console.error('[auth] Clerk token verification failed:', clerkError?.reason || clerkError?.message || clerkError);
-      }
-
-      try {
-        user = await authenticateWithJwt(token);
-      } catch {
-        const reason = clerkError?.reason || clerkError?.message;
-        const message = reason === 'token-iat-in-the-future'
-          ? 'Server clock is behind Clerk. Sync your system time and try again.'
-          : 'Invalid or expired token';
-        throw new AppError(message, 401, 'UNAUTHORIZED');
-      }
+      user = await authenticateWithJwt(token);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Invalid or expired token', 401, 'UNAUTHORIZED');
     }
+  } else if (isClerkConfigured()) {
+    user = await authenticateWithClerk(token);
   } else {
-    user = await authenticateWithJwt(token);
+    try {
+      user = await authenticateWithJwt(token);
+    } catch {
+      throw new AppError('Invalid or expired token', 401, 'UNAUTHORIZED');
+    }
   }
 
   req.user = user;

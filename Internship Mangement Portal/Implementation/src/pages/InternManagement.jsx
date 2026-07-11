@@ -77,16 +77,16 @@ export default function InternManagement() {
       >
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-5 h-5 text-emerald-400" />
-            <h1 className="text-2xl lg:text-3xl font-bold text-white">Clerk Students</h1>
+            <Shield className="w-5 h-5 text-emerald-600" />
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Clerk Students</h1>
           </div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-gray-500 text-sm">
             Real-time roster of students synced from Clerk authentication only.
             {lastUpdated ? ` · Updated ${lastUpdated.toLocaleTimeString()}` : ''}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" icon={RefreshCw} onClick={() => refresh(false)} disabled={loading} className="border-slate-600 text-slate-200">
+          <Button variant="outline" icon={RefreshCw} onClick={() => refresh(false)} disabled={loading}>
             Refresh
           </Button>
           <Link to={ROUTES.SUPERADMIN.APPROVALS}>
@@ -95,14 +95,13 @@ export default function InternManagement() {
         </div>
       </motion.div>
 
-      <Card className="bg-slate-800/50 border-slate-700/60 backdrop-blur-sm">
+      <Card glass>
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           <SearchBar
             placeholder="Search by name, email, or institute..."
             className="flex-1"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            dark
           />
           <div className="flex gap-3 flex-wrap">
             <Filter
@@ -111,7 +110,6 @@ export default function InternManagement() {
               value={portalStatus}
               onChange={(e) => setPortalStatus(e.target.value)}
               className="w-40"
-              dark
             />
             <Filter
               label="Enrollment"
@@ -119,7 +117,6 @@ export default function InternManagement() {
               value={enrollmentStatus}
               onChange={(e) => setEnrollmentStatus(e.target.value)}
               className="w-36"
-              dark
             />
           </div>
         </div>
@@ -131,18 +128,18 @@ export default function InternManagement() {
             </div>
           ) : students.length === 0 ? (
             <div className="text-center py-16 px-4">
-              <Users className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 font-medium">No Clerk students found</p>
-              <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+              <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">No Clerk students found</p>
+              <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
                 Students appear here after they sign in with Clerk on the student portal. Seeded or manual accounts are not shown.
               </p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-700/80">
+                <tr className="border-b border-gray-100">
                   {['Student', 'Email', 'Internship', 'Portal', 'Enrollment', 'Joined'].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider py-3 px-4">
+                    <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3 px-4">
                       {h}
                     </th>
                   ))}
@@ -152,18 +149,18 @@ export default function InternManagement() {
                 {students.map((student) => {
                   const portal = student.portalAccess || {};
                   return (
-                    <tr key={student.id} className="border-b border-slate-800/80 hover:bg-slate-900/40 transition-colors">
+                    <tr key={student.id} className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
                           <Avatar src={student.avatar} name={student.displayName || student.name} size="sm" />
                           <div className="min-w-0">
-                            <span className="font-medium text-white block truncate">{student.displayName || student.name}</span>
-                            <span className="text-xs text-slate-500 truncate block">{portal.institute || '—'}</span>
+                            <span className="font-medium text-gray-900 block truncate">{student.displayName || student.name}</span>
+                            <span className="text-xs text-gray-500 truncate block">{portal.institute || '—'}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-slate-400 text-sm max-w-[180px] truncate">{student.email}</td>
-                      <td className="py-4 px-4 text-slate-300 text-sm max-w-[160px] truncate">
+                      <td className="py-4 px-4 text-gray-500 text-sm max-w-[180px] truncate">{student.email}</td>
+                      <td className="py-4 px-4 text-gray-600 text-sm max-w-[160px] truncate">
                         {portal.internship?.title || portal.internshipTitle || '—'}
                       </td>
                       <td className="py-4 px-4">
@@ -176,7 +173,7 @@ export default function InternManagement() {
                           {portal.enrollmentStatus || 'none'}
                         </Badge>
                       </td>
-                      <td className="py-4 px-4 text-slate-500 text-sm whitespace-nowrap">
+                      <td className="py-4 px-4 text-gray-500 text-sm whitespace-nowrap">
                         {formatDate(student.joinedAt || student.createdAt)}
                       </td>
                     </tr>
@@ -192,15 +189,14 @@ export default function InternManagement() {
           total={pagination.total}
           perPage={pagination.limit}
           onPageChange={setPage}
-          dark
         />
       </Card>
 
-      <Card className="bg-emerald-500/5 border-emerald-500/20 p-4 flex gap-3 items-start">
-        <ExternalLink className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+      <Card className="bg-emerald-50/50 border-emerald-100 p-4 flex gap-3 items-start">
+        <ExternalLink className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-semibold text-emerald-300">Clerk-only data source</p>
-          <p className="text-slate-400 mt-1">
+          <p className="font-semibold text-emerald-700">Clerk-only data source</p>
+          <p className="text-gray-500 mt-1">
             This list excludes seeded demo users and manually added intern records. Only accounts with a linked Clerk ID are displayed and updated in real time.
           </p>
         </div>

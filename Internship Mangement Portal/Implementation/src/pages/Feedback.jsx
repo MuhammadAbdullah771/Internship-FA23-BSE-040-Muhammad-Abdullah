@@ -52,27 +52,27 @@ export default function Feedback() {
     return (
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">Task Review Queue</h1>
-          <p className="text-slate-400 mt-1">Live submissions awaiting admin review from Clerk students.</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Task Review Queue</h1>
+          <p className="text-gray-500 mt-1">Live submissions awaiting admin review from Clerk students.</p>
         </motion.div>
 
         {reviewTasks.length === 0 ? (
-          <Card className="bg-slate-800/50 border-slate-700/60 p-12 text-center">
-            <ClipboardList className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-400 font-medium">No tasks in review</p>
-            <p className="text-sm text-slate-500 mt-1">Student task submissions will appear here in real time.</p>
+          <Card glass className="p-12 text-center">
+            <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-medium">No tasks in review</p>
+            <p className="text-sm text-gray-500 mt-1">Student task submissions will appear here in real time.</p>
           </Card>
         ) : (
           <div className="grid gap-4">
             {reviewTasks.map((task) => (
-              <Card key={task.id} className="bg-slate-800/50 border-slate-700/60 p-5">
+              <Card key={task.id} glass className="p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
                     {task.assignee ? <Avatar src={task.assignee} name={task.title} size="sm" /> : null}
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white">{task.title}</h3>
+                      <h3 className="font-semibold text-gray-900">{task.title}</h3>
                       {task.description && (
-                        <p className="text-sm text-slate-400 mt-1 line-clamp-2">{task.description}</p>
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{task.description}</p>
                       )}
                       <div className="flex flex-wrap gap-2 mt-2">
                         <Badge variant="warning">In Review</Badge>
@@ -81,7 +81,7 @@ export default function Feedback() {
                     </div>
                   </div>
                   <Link to={paths.taskDetail(task.id)}>
-                    <Badge className="bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/25">
+                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-pointer hover:bg-emerald-100">
                       Open Task
                     </Badge>
                   </Link>
