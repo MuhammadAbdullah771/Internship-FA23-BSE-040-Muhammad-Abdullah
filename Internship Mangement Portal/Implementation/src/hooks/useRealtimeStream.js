@@ -6,12 +6,14 @@ export function useRealtimeStream(events, onEvent, { enabled = true } = {}) {
   const { isSignedIn, getToken } = useClerkAuth();
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
+  const eventsKey = (events || []).join(',');
 
   useEffect(() => {
     if (!enabled) return undefined;
 
     let source = null;
     let cancelled = false;
+    const eventNames = eventsKey ? eventsKey.split(',') : [];
 
     async function connect() {
       let token = getAccessToken();
@@ -32,7 +34,7 @@ export function useRealtimeStream(events, onEvent, { enabled = true } = {}) {
         }
       };
 
-      (events || []).forEach((name) => {
+      eventNames.forEach((name) => {
         source.addEventListener(name, handler);
       });
 
@@ -50,5 +52,5 @@ export function useRealtimeStream(events, onEvent, { enabled = true } = {}) {
       cancelled = true;
       source?.close();
     };
-  }, [enabled, events, isSignedIn, getToken]);
+  }, [enabled, eventsKey, isSignedIn, getToken]);
 }

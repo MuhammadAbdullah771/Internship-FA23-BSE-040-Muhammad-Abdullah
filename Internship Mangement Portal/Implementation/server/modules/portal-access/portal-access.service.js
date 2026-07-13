@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { User } from '../../models/User.js';
 import { InternshipPosting } from '../../models/InternshipPosting.js';
+import { InternshipApplication } from '../../models/InternshipApplication.js';
 import { ROLES } from '../../constants/roles.js';
 import { AppError } from '../../utils/AppError.js';
 import { toUserDTO } from '../../utils/userSerializer.js';
@@ -11,6 +12,33 @@ import { broadcastToRole, broadcastToUser } from '../events/eventBus.js';
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const paymentsDir = path.resolve(moduleDir, '../../uploads/payments');
 const cvsDir = path.resolve(moduleDir, '../../uploads/cvs');
+
+function portalStatusToApplicationStatus(status) {
+  if (status === 'approved') return 'accepted';
+  if (status === 'rejected') return 'rejected';
+  return 'pending';
+}
+
+async function syncInternshipApplication(userId, postingId, portalStatus) {
+  if (!postingId) return null;
+
+  const status = portalStatusToApplicationStatus(portalStatus);
+  const application = await InternshipApplication.findOneAndUpdate(
+    { userId, postingId },
+    { $set: { status }, $setOnInsert: { userId, postingId } },
+    { upsert: true, new: true },
+  );
+
+  const payload = {
+    userId: userId.toString(),
+    postingId: postingId.toString(),
+    applicationId: application._id.toString(),
+    status,
+  };
+  broadcastToUser(userId.toString(), 'applications:updated', payload);
+  broadcastToRole(ROLES.SUPERADMIN, 'applications:updated', payload);
+  return application;
+}
 
 function mapPortalAccessFields(portalAccess = {}) {
   return {
@@ -194,6 +222,7 @@ export async function submitPortalAccess(userId, payload) {
 
   await user.save();
   await enrichPortalAccessPosting(user);
+  await syncInternshipApplication(userId, posting._id, 'pending');
   const result = mapApplicationUser(user);
   broadcastToUser(userId.toString(), 'portal-access:updated', { studentId: userId.toString() });
   broadcastToRole(ROLES.SUPERADMIN, 'portal-access:submitted', { studentId: userId.toString() });
@@ -235,6 +264,15 @@ export async function reviewPortalAccess(adminId, studentId, { action, rejection
   user.portalAccess.reviewedBy = adminId;
   await user.save();
   await enrichPortalAccessPosting(user);
+
+  if (user.portalAccess.postingId) {
+    await syncInternshipApplication(
+      studentId,
+      user.portalAccess.postingId,
+      user.portalAccess.status,
+    );
+  }
+
   const result = mapApplicationUser(user);
   broadcastToUser(studentId.toString(), 'portal-access:updated', {
     studentId: studentId.toString(),
@@ -280,9 +318,11 @@ export async function completeEnrollment(adminId, studentId) {
 
   await enrichPortalAccessPosting(user);
   const result = mapApplicationUser(user);
-  broadcastToUser(studentId.toString(), 'portal-access:updated', {
+  const payload = {
     studentId: studentId.toString(),
     enrollmentStatus: 'completed',
-  });
+  };
+  broadcastToUser(studentId.toString(), 'portal-access:updated', payload);
+  broadcastToRole(ROLES.SUPERADMIN, 'portal-access:updated', payload);
   return result;
 }

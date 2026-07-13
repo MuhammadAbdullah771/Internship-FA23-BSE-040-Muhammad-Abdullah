@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
@@ -11,6 +11,7 @@ import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import { useAppPaths } from '../hooks/useAppPaths';
 import { fetchTask, submitTask } from '../services/taskService';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 
 const STATUS_LABELS = {
   todo: 'TO DO',
@@ -38,34 +39,35 @@ export default function TaskSubmission() {
   const [submitting, setSubmitting] = useState(false);
   const { register, handleSubmit, reset } = useForm();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await fetchTask(id);
-        if (!cancelled) {
-          setTask(data);
-          reset({
-            github: data.submission?.githubLink || '',
-            liveUrl: data.submission?.liveUrl || '',
-            comments: data.submission?.comments || '',
-          });
-        }
-      } catch {
-        if (!cancelled) {
-          toast.error('Task not found');
-          navigate(paths.TASKS);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+  const loadTask = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await fetchTask(id);
+      setTask(data);
+      reset({
+        github: data.submission?.githubLink || '',
+        liveUrl: data.submission?.liveUrl || '',
+        comments: data.submission?.comments || '',
+      });
+    } catch {
+      if (!silent) {
+        toast.error('Task not found');
+        navigate(paths.TASKS);
       }
+    } finally {
+      if (!silent) setLoading(false);
     }
-
-    load();
-    return () => { cancelled = true; };
   }, [id, navigate, paths.TASKS, reset]);
+
+  useEffect(() => {
+    loadTask(false);
+  }, [loadTask]);
+
+  useRealtimeStream(['tasks:updated'], (_event, payload) => {
+    if (!payload?.taskId || payload.taskId === id) {
+      loadTask(true);
+    }
+  });
 
   const saveSubmission = async (formData, submit = false) => {
     setSubmitting(true);

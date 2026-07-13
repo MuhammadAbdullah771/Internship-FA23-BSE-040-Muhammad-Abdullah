@@ -53,7 +53,14 @@ export default function InternManagement() {
   const { data, loading, lastUpdated, refresh } = useRealtimePoll(loadStudents, { interval: 8000 });
 
   useRealtimeStream(
-    ['students:updated', 'portal-access:submitted', 'portal-access:reviewed', 'portal-access:updated'],
+    [
+      'students:updated',
+      'portal-access:submitted',
+      'portal-access:reviewed',
+      'portal-access:updated',
+      'applications:updated',
+      'profile:updated',
+    ],
     () => refresh(true),
   );
 

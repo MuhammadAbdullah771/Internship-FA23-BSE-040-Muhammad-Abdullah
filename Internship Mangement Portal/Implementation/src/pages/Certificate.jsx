@@ -1,27 +1,38 @@
-import { useEffect, useState } from 'react';
 import PageHeader from '../components/common/PageHeader';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import CertificatePanel from '../components/student/CertificatePanel';
 import { useAuth } from '../context/AuthContext';
 import { fetchStudentDashboard } from '../services/studentService';
+import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 
 export default function Certificate() {
   const { user } = useAuth();
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchStudentDashboard()
-      .then(setDashboard)
-      .catch(() => toast.error('Failed to load certificate status'))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: dashboard, loading, refresh } = useRealtimePoll(fetchStudentDashboard, {
+    interval: 10000,
+  });
 
-  if (loading) {
+  useRealtimeStream(
+    ['tasks:updated', 'portal-access:updated', 'portal-access:reviewed'],
+    () => refresh(true),
+  );
+
+  if (loading && !dashboard) {
     return (
       <div className="flex justify-center py-20">
         <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-gray-500">Could not load certificate status.</p>
+        <Button onClick={() => refresh(false)}>Try again</Button>
       </div>
     );
   }

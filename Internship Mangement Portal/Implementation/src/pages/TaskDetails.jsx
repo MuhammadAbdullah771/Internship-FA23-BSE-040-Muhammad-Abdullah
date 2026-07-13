@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, User, Paperclip, MessageSquare, CheckCircle2, Trash2 } from 'lucide-react';
@@ -10,6 +10,7 @@ import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { useAppPaths } from '../hooks/useAppPaths';
 import { fetchTask, updateTaskStatus, deleteTask } from '../services/taskService';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 import { PRIORITY_COLORS } from '../constants';
 
 const STATUS_LABELS = {
@@ -35,27 +36,30 @@ export default function TaskDetails() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await fetchTask(id);
-        if (!cancelled) setTask(data);
-      } catch {
-        if (!cancelled) {
-          toast.error('Task not found');
-          navigate(paths.TASKS);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+  const loadTask = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await fetchTask(id);
+      setTask(data);
+    } catch {
+      if (!silent) {
+        toast.error('Task not found');
+        navigate(paths.TASKS);
       }
+    } finally {
+      if (!silent) setLoading(false);
     }
-
-    load();
-    return () => { cancelled = true; };
   }, [id, navigate, paths.TASKS]);
+
+  useEffect(() => {
+    loadTask(false);
+  }, [loadTask]);
+
+  useRealtimeStream(['tasks:updated'], (_event, payload) => {
+    if (!payload?.taskId || payload.taskId === id) {
+      loadTask(true);
+    }
+  });
 
   const handleAdminStatus = async (status) => {
     setUpdating(true);

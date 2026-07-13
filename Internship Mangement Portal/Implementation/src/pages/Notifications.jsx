@@ -180,7 +180,25 @@ export default function Notifications() {
   );
 
   useRealtimeStream(
-    ['portal-access:submitted', 'portal-access:reviewed', 'students:updated', 'applications:updated'],
+    [
+      'tasks:updated',
+      'applications:updated',
+      'portal-access:updated',
+      'portal-access:reviewed',
+    ],
+    () => studentQuery.refresh(true),
+    { enabled: isStudent },
+  );
+
+  useRealtimeStream(
+    [
+      'portal-access:submitted',
+      'portal-access:reviewed',
+      'portal-access:updated',
+      'students:updated',
+      'applications:updated',
+      'tasks:updated',
+    ],
     () => adminQuery.refresh(true),
     { enabled: !isStudent },
   );

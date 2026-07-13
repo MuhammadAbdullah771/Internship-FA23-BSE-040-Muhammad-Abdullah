@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, Users, ArrowRight, ClipboardList, CheckCircle2 } from 'lucide-react';
@@ -28,9 +28,7 @@ const statusVariant = {
 };
 
 export default function InternshipPortalContent() {
-  const [postings, setPostings] = useState([]);
   const [filter, setFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const { isAuthenticated, isStudent, user } = useAuth();
   const portalReady = isAuthenticated && isStudent && isStudentPortalApproved(user);
@@ -43,15 +41,31 @@ export default function InternshipPortalContent() {
     enabled: portalReady,
   });
 
-  useRealtimeStream(['tasks:updated'], () => refreshDashboard(true), { enabled: portalReady });
+  const fetchPostings = useCallback(
+    () => fetchInternshipPostings(filter === 'trending' ? { trending: true } : {}),
+    [filter],
+  );
 
+  const {
+    data: postings = [],
+    loading,
+    refresh: refreshPostings,
+  } = useRealtimePoll(fetchPostings, { interval: 12000 });
+
+  useRealtimeStream(
+    ['tasks:updated', 'portal-access:updated'],
+    () => refreshDashboard(true),
+    { enabled: portalReady },
+  );
+
+  useRealtimeStream(['postings:updated', 'applications:updated'], () => refreshPostings(true));
+
+  const prevFilter = useRef(filter);
   useEffect(() => {
-    setLoading(true);
-    fetchInternshipPostings(filter === 'trending' ? { trending: true } : {})
-      .then(setPostings)
-      .catch(() => toast.error('Failed to load internships'))
-      .finally(() => setLoading(false));
-  }, [filter]);
+    if (prevFilter.current === filter) return;
+    prevFilter.current = filter;
+    refreshPostings(false);
+  }, [filter, refreshPostings]);
 
   useEffect(() => {
     if (location.hash !== '#internship-programs') return;
@@ -72,6 +86,7 @@ export default function InternshipPortalContent() {
       return;
     }
     toast.success(result.message);
+    refreshPostings(true);
   };
 
   const myTasks = dashboard?.recentTasks || [];

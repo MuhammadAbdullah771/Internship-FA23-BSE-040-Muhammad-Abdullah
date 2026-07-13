@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Clock, TrendingUp, FileText, Users, Briefcase } from 'lucide-react';
-import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DashboardCard from '../components/common/DashboardCard';
@@ -19,8 +17,12 @@ import { useRealtimeStream } from '../hooks/useRealtimeStream';
 export default function Reports() {
   const { isStudent } = useAuth();
   const paths = useAppPaths();
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(isStudent);
+
+  const {
+    data: dashboard,
+    loading,
+    refresh: refreshStudent,
+  } = useRealtimePoll(fetchStudentDashboard, { interval: 10000, enabled: isStudent });
 
   const {
     data: adminReports,
@@ -29,18 +31,23 @@ export default function Reports() {
   } = useRealtimePoll(fetchAdminReports, { interval: 10000, enabled: !isStudent });
 
   useRealtimeStream(
-    ['students:updated', 'portal-access:submitted', 'portal-access:reviewed', 'applications:updated'],
+    ['tasks:updated', 'portal-access:updated', 'portal-access:reviewed'],
+    () => refreshStudent(true),
+    { enabled: isStudent },
+  );
+
+  useRealtimeStream(
+    [
+      'students:updated',
+      'portal-access:submitted',
+      'portal-access:reviewed',
+      'portal-access:updated',
+      'applications:updated',
+      'tasks:updated',
+    ],
     () => refreshAdminReports(true),
     { enabled: !isStudent },
   );
-
-  useEffect(() => {
-    if (!isStudent) return;
-    fetchStudentDashboard()
-      .then(setDashboard)
-      .catch(() => toast.error('Failed to load reports'))
-      .finally(() => setLoading(false));
-  }, [isStudent]);
 
   if (!isStudent) {
     const stats = adminReports?.stats;
@@ -94,7 +101,7 @@ export default function Reports() {
     );
   }
 
-  if (loading) {
+  if (loading && !dashboard) {
     return (
       <div className="flex justify-center py-20">
         <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />

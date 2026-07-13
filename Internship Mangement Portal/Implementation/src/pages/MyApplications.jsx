@@ -1,8 +1,6 @@
-import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, RefreshCw, Clock, CheckCircle, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
 import PageHeader from '../components/common/PageHeader';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -28,18 +26,32 @@ function formatDate(date) {
 }
 
 export default function MyApplications() {
-  const { data: applications = [], loading, lastUpdated, refresh } = useRealtimePoll(
-    fetchMyApplications,
-    { interval: 10000 },
+  const {
+    data: applications,
+    loading,
+    error,
+    lastUpdated,
+    refresh,
+  } = useRealtimePoll(fetchMyApplications, { interval: 5000 });
+
+  useRealtimeStream(
+    [
+      'applications:updated',
+      'portal-access:submitted',
+      'portal-access:reviewed',
+      'portal-access:updated',
+    ],
+    () => refresh(true),
   );
 
-  useRealtimeStream(['applications:updated', 'portal-access:reviewed'], () => refresh(true));
+  const list = applications || [];
+  const showInitialLoader = loading && !applications;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Applications"
-        subtitle="Track the status of your internship applications in one place."
+        subtitle="Track the status of your internship applications in real time."
         eyebrow="Internships"
         actions={(
           <>
@@ -53,16 +65,27 @@ export default function MyApplications() {
         )}
       />
 
-      {loading ? (
+      {lastUpdated && (
+        <p className="text-xs text-gray-400 -mt-2">
+          Live · updated {lastUpdated.toLocaleTimeString()}
+        </p>
+      )}
+
+      {showInitialLoader ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : applications.length === 0 ? (
+      ) : error ? (
+        <Card className="text-center py-12">
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={() => refresh(false)}>Try again</Button>
+        </Card>
+      ) : list.length === 0 ? (
         <Card className="text-center py-16">
           <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-gray-900 mb-2">No applications yet</h2>
           <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-            Browse available internships and apply to get started with your internship journey.
+            Submit an internship application from onboarding or browse tracks to apply.
           </p>
           <Link to={ROUTES.STUDENT.PORTAL}>
             <Button variant="purple">Browse Internships</Button>
@@ -70,7 +93,7 @@ export default function MyApplications() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {applications.map((app, i) => {
+          {list.map((app, i) => {
             const config = STATUS_CONFIG[app.status] || STATUS_CONFIG.pending;
             const StatusIcon = config.icon;
             const posting = app.posting;

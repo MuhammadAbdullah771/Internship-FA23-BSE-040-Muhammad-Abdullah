@@ -16,10 +16,14 @@ export function toPostingDTO(posting) {
 }
 
 export function toApplicationDTO(application) {
+  const postingDoc = application.postingId && typeof application.postingId === 'object' && application.postingId._id
+    ? application.postingId
+    : null;
+
   return {
     id: application._id.toString(),
     status: application.status,
     appliedAt: application.createdAt,
-    posting: application.postingId ? toPostingDTO(application.postingId) : null,
+    posting: postingDoc ? toPostingDTO(postingDoc) : null,
   };
 }

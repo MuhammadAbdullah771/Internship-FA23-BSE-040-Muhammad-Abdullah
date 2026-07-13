@@ -13,6 +13,7 @@ import { fetchInternshipPostings } from '../services/internshipService';
 import { submitPortalAccess } from '../services/portalAccessService';
 import { useAuth } from '../context/AuthContext';
 import { useRealtimePoll } from '../hooks/useRealtimePoll';
+import { useRealtimeStream } from '../hooks/useRealtimeStream';
 import { PORTAL_ACCESS_STATUS, ROUTES } from '../constants';
 
 function readFileAsDataUrl(file) {
@@ -45,6 +46,8 @@ export default function StudentOnboarding() {
     fetchInternshipPostings,
     { interval: 12000 },
   );
+
+  useRealtimeStream(['postings:updated'], () => refresh(true));
 
   const selectedPosting = useMemo(
     () => postings.find((p) => p.id === selectedPostingId) || null,

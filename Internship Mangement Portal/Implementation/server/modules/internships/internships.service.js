@@ -4,7 +4,8 @@ import { User } from '../../models/User.js';
 import { AppError } from '../../utils/AppError.js';
 import { assertPortalApproved } from '../portal-access/portal-access.service.js';
 import { toPostingDTO, toApplicationDTO } from '../../utils/internshipSerializer.js';
-import { broadcastToRole } from '../events/eventBus.js';
+import { broadcast, broadcastToRole, broadcastToUser } from '../events/eventBus.js';
+import { ROLES } from '../../constants/roles.js';
 
 export async function listPostings({ trending } = {}) {
   const filter = { isActive: true };
@@ -42,8 +43,9 @@ export async function applyToPosting(postingId, userId) {
   }
 
   const application = await InternshipApplication.create({ userId, postingId });
-  broadcastToRole('superadmin', 'applications:updated', { userId: userId.toString(), postingId });
-  broadcast('applications:updated', { userId: userId.toString() });
+  const payload = { userId: userId.toString(), postingId: postingId.toString() };
+  broadcastToRole(ROLES.SUPERADMIN, 'applications:updated', payload);
+  broadcastToUser(userId.toString(), 'applications:updated', payload);
   return {
     message: `Application submitted for ${posting.title}`,
     application: toApplicationDTO(application),
@@ -51,6 +53,27 @@ export async function applyToPosting(postingId, userId) {
 }
 
 export async function getMyApplications(userId) {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+
+  // Keep portal onboarding applications visible in My Applications
+  const portalStatus = user.portalAccess?.status;
+  const portalPostingId = user.portalAccess?.postingId;
+  if (
+    portalPostingId
+    && portalStatus
+    && portalStatus !== 'unsubmitted'
+  ) {
+    await InternshipApplication.findOneAndUpdate(
+      { userId, postingId: portalPostingId },
+      {
+        $set: { status: portalStatus === 'approved' ? 'accepted' : portalStatus === 'rejected' ? 'rejected' : 'pending' },
+        $setOnInsert: { userId, postingId: portalPostingId },
+      },
+      { upsert: true, new: true },
+    );
+  }
+
   const applications = await InternshipApplication.find({ userId })
     .populate('postingId')
     .sort({ createdAt: -1 });
@@ -60,5 +83,6 @@ export async function getMyApplications(userId) {
 
 export async function createPosting(payload) {
   const posting = await InternshipPosting.create(payload);
+  broadcast('postings:updated', { postingId: posting._id.toString() });
   return toPostingDTO(posting);
 }

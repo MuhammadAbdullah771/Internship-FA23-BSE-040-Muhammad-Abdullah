@@ -49,6 +49,7 @@ export default function AdminDashboard() {
       'portal-access:updated',
       'students:updated',
       'applications:updated',
+      'tasks:updated',
     ],
     () => refresh(true),
   );

@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MessageSquare, CheckCircle, Clock, ClipboardList } from 'lucide-react';
-import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
@@ -13,11 +11,20 @@ import { fetchTaskBoard } from '../services/taskService';
 import { useRealtimePoll } from '../hooks/useRealtimePoll';
 import { useRealtimeStream } from '../hooks/useRealtimeStream';
 
+async function fetchStudentFeedbackTasks() {
+  const data = await fetchStudentDashboard();
+  return (data.allTasks || []).filter((t) => t.status === 'done' || t.status === 'review');
+}
+
 export default function Feedback() {
   const { isStudent } = useAuth();
   const paths = useAppPaths();
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(isStudent);
+
+  const {
+    data: tasks = [],
+    loading,
+    refresh: refreshStudent,
+  } = useRealtimePoll(fetchStudentFeedbackTasks, { interval: 10000, enabled: isStudent });
 
   const {
     data: taskBoard,
@@ -25,18 +32,13 @@ export default function Feedback() {
     refresh: refreshBoard,
   } = useRealtimePoll(fetchTaskBoard, { interval: 10000, enabled: !isStudent });
 
-  useRealtimeStream(['tasks:updated'], () => refreshBoard(true), { enabled: !isStudent });
-
-  useEffect(() => {
-    if (!isStudent) return;
-    fetchStudentDashboard()
-      .then((data) => {
-        const reviewed = (data.allTasks || []).filter((t) => t.status === 'done' || t.status === 'review');
-        setTasks(reviewed);
-      })
-      .catch(() => toast.error('Failed to load feedback'))
-      .finally(() => setLoading(false));
-  }, [isStudent]);
+  useRealtimeStream(
+    ['tasks:updated'],
+    () => {
+      if (isStudent) refreshStudent(true);
+      else refreshBoard(true);
+    },
+  );
 
   if (!isStudent) {
     const reviewTasks = taskBoard?.review || [];
@@ -94,7 +96,7 @@ export default function Feedback() {
     );
   }
 
-  if (loading) {
+  if (loading && tasks.length === 0) {
     return (
       <div className="flex justify-center py-20">
         <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />

@@ -1,8 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import { Check, ExternalLink, RefreshCw, Users } from 'lucide-react';
-import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -29,7 +27,7 @@ function AdminProgressView() {
   const { data, loading, lastUpdated, refresh } = useRealtimePoll(fetchAdminProgress, { interval: 10000 });
 
   useRealtimeStream(
-    ['students:updated', 'portal-access:reviewed', 'tasks:updated'],
+    ['students:updated', 'portal-access:reviewed', 'portal-access:updated', 'tasks:updated'],
     () => refresh(true),
   );
 
@@ -132,34 +130,36 @@ function AdminProgressView() {
 export default function ProgressTracking() {
   const { user, isStudent } = useAuth();
   const paths = useAppPaths();
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(isStudent);
 
-  const loadProgress = useCallback(async () => {
-    if (!isStudent) return;
-    setLoading(true);
-    try {
-      const data = await fetchStudentDashboard();
-      setDashboard(data);
-    } catch {
-      toast.error('Failed to load progress');
-    } finally {
-      setLoading(false);
-    }
-  }, [isStudent]);
+  const {
+    data: dashboard,
+    loading,
+    refresh,
+  } = useRealtimePoll(fetchStudentDashboard, { interval: 10000, enabled: isStudent });
 
-  useEffect(() => {
-    loadProgress();
-  }, [loadProgress]);
+  useRealtimeStream(
+    ['tasks:updated', 'portal-access:updated', 'portal-access:reviewed'],
+    () => refresh(true),
+    { enabled: isStudent },
+  );
 
   if (!isStudent) {
     return <AdminProgressView />;
   }
 
-  if (loading) {
+  if (loading && !dashboard) {
     return (
       <div className="flex justify-center py-20">
         <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-gray-500">Could not load progress.</p>
+        <Button onClick={() => refresh(false)}>Try again</Button>
       </div>
     );
   }
