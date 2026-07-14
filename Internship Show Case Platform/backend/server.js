@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const { clerkMiddleware } = require('@clerk/express');
 const config = require('./config');
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
@@ -12,7 +13,16 @@ const app = express();
 
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin(origin, callback) {
+      // Allow non-browser tools (no Origin) and known frontend URLs
+      if (!origin || config.corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      if (config.nodeEnv === 'development' && /localhost|127\.0\.0\.1/.test(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );
@@ -23,11 +33,31 @@ if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
 }
 
+const clerkConfigured =
+  Boolean(config.clerkPublishableKey) &&
+  Boolean(config.clerkSecretKey) &&
+  !config.clerkPublishableKey.includes('your_publishable_key') &&
+  !config.clerkSecretKey.includes('your_secret_key');
+
+if (clerkConfigured) {
+  app.use(
+    clerkMiddleware({
+      publishableKey: config.clerkPublishableKey,
+      secretKey: config.clerkSecretKey,
+    })
+  );
+} else {
+  console.warn(
+    'Clerk keys are missing or still placeholders. Auth routes will reject requests until CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are set.'
+  );
+}
+
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Welcome to Intern Project Showcase Platform API',
     version: '1.0.0',
+    clerkConfigured,
   });
 });
 

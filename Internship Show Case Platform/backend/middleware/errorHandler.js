@@ -22,6 +22,11 @@ const errorHandler = (err, req, res, next) => {
     message = `Duplicate value for ${field}`;
   }
 
+  if (err.status === 401 || err.statusCode === 401) {
+    statusCode = 401;
+    message = message || 'Authentication required';
+  }
+
   if (config.nodeEnv === 'development') {
     console.error(err);
   }

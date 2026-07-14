@@ -7,11 +7,16 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["mern", "internship", "portfolio"],
+  "keywords": [
+    "mern",
+    "internship",
+    "portfolio"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@clerk/express": "^2.1.41",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

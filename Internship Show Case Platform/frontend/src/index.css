@@ -2,23 +2,24 @@
 
 @theme {
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #eef8f4;
-  --color-brand-100: #d5efe5;
-  --color-brand-200: #aee0cb;
-  --color-brand-300: #7cc9ab;
-  --color-brand-400: #4aad88;
-  --color-brand-500: #2f9170;
-  --color-brand-600: #227459;
-  --color-brand-700: #1c5d49;
-  --color-brand-800: #184b3c;
-  --color-brand-900: #143e33;
+  --color-brand-50: #e8f6f0;
+  --color-brand-100: #cfeadd;
+  --color-brand-200: #9ed4bb;
+  --color-brand-300: #6bbc97;
+  --color-brand-400: #3ea37a;
+  --color-brand-500: #288965;
+  --color-brand-600: #1d6f52;
+  --color-brand-700: #185841;
+  --color-brand-800: #144635;
+  --color-brand-900: #0f372b;
 
-  --color-ink: #0f1c18;
-  --color-muted: #5a6b64;
-  --color-surface: #f6f9f7;
-  --color-line: #d9e5df;
+  --color-ink: #0a1411;
+  --color-muted: #576961;
+  --color-surface: #eef4f1;
+  --color-surface-elevated: #fbfcfb;
+  --color-line: #c9d8d0;
 }
 
 @layer base {
@@ -32,5 +33,153 @@
 
   #root {
     @apply min-h-screen;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-brand-400) 40%, white);
+    color: var(--color-ink);
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 1.2s ease both;
+  }
+
+  .animate-rise {
+    animation: rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-ken {
+    animation: ken 28s ease-in-out infinite alternate;
+  }
+
+  .animate-drift {
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+
+  .delay-1 {
+    animation-delay: 140ms;
+  }
+
+  .delay-2 {
+    animation-delay: 260ms;
+  }
+
+  .delay-3 {
+    animation-delay: 400ms;
+  }
+
+  .delay-4 {
+    animation-delay: 540ms;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Cinematic grade for landing hero photo */
+  .hero-photo {
+    filter: contrast(1.12) saturate(1.08) brightness(0.86) sepia(0.08);
+  }
+
+  .hero-grade {
+    background:
+      linear-gradient(
+        105deg,
+        rgba(6, 14, 12, 0.78) 0%,
+        rgba(9, 28, 22, 0.55) 34%,
+        rgba(20, 70, 54, 0.28) 62%,
+        rgba(46, 140, 108, 0.18) 100%
+      ),
+      radial-gradient(
+        ellipse 70% 55% at 78% 18%,
+        rgba(110, 198, 168, 0.34),
+        transparent 58%
+      ),
+      radial-gradient(
+        ellipse 55% 45% at 12% 88%,
+        rgba(8, 24, 18, 0.55),
+        transparent 60%
+      ),
+      linear-gradient(
+        to top,
+        rgba(238, 244, 241, 0.95) 0%,
+        rgba(238, 244, 241, 0.35) 18%,
+        transparent 42%
+      );
+  }
+
+  .landing-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    opacity: 0.22;
+    mix-blend-mode: soft-light;
+  }
+
+  .nav-text-shadow {
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ken {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(-1.5%, 1%, 0);
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(2%, -1.5%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-rise,
+  .animate-ken,
+  .animate-drift {
+    animation: none;
   }
 }
