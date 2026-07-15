@@ -7,11 +7,22 @@ import {
   useState,
 } from 'react';
 import { useAuth, useClerk, useUser } from '@clerk/clerk-react';
-import { getCurrentUser, syncCurrentUser } from '../api/auth';
-import { setAuthTokenGetter } from '../api/axios';
+import api, { setAuthTokenGetter } from '../api/axios';
 import PageLoader from '../components/ui/PageLoader';
 
 const AuthContext = createContext(null);
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRetryableSyncError = (error) => {
+  const status = error?.status || error?.response?.status;
+  const message = String(error?.message || '');
+  if (message.includes('token-not-active-yet') || message.includes('not-active')) {
+    return true;
+  }
+  if (!status) return true;
+  return [408, 429, 500, 502, 503, 504].includes(status);
+};
 
 export const AuthProvider = ({ children }) => {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
@@ -25,7 +36,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     setAuthTokenGetter(async () => {
       if (!isSignedIn) return null;
-      return getToken();
+      try {
+        return await getToken();
+      } catch {
+        return null;
+      }
     });
 
     return () => setAuthTokenGetter(null);
@@ -34,26 +49,56 @@ export const AuthProvider = ({ children }) => {
   const refreshAppUser = useCallback(async () => {
     if (!isSignedIn) {
       setAppUser(null);
+      setAuthError('');
       return null;
     }
 
     setIsSyncing(true);
     setAuthError('');
 
-    try {
-      await syncCurrentUser();
-      const response = await getCurrentUser();
-      const user = response.data?.data?.user || null;
-      setAppUser(user);
-      return user;
-    } catch (error) {
-      setAuthError(error.message || 'Failed to sync user session');
-      setAppUser(null);
-      return null;
-    } finally {
-      setIsSyncing(false);
+    let lastError = null;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw Object.assign(new Error('Session token not ready yet'), {
+            status: 401,
+          });
+        }
+
+        const headers = { Authorization: `Bearer ${token}` };
+
+        await api.post('/auth/sync', {}, { headers });
+        const response = await api.get('/auth/me', { headers });
+        const user = response.data?.data?.user || null;
+
+        setAppUser(user);
+        setAuthError('');
+        setIsSyncing(false);
+        return user;
+      } catch (error) {
+        lastError = error;
+        if (!isRetryableSyncError(error) || attempt === 4) break;
+        const message = String(error?.message || '');
+        const delay = message.includes('token-not-active')
+          ? 1500 * (attempt + 1)
+          : 500 * (attempt + 1);
+        await wait(delay);
+      }
     }
-  }, [isSignedIn]);
+
+    const status = lastError?.status || lastError?.response?.status;
+    const message =
+      status === 502 || status === 503
+        ? 'API is restarting or unavailable. Please try again in a moment.'
+        : lastError?.message || 'Failed to sync user session';
+
+    setAuthError(message);
+    setAppUser(null);
+    setIsSyncing(false);
+    return null;
+  }, [getToken, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded) return;

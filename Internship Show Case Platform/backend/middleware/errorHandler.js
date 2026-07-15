@@ -22,6 +22,15 @@ const errorHandler = (err, req, res, next) => {
     message = `Duplicate value for ${field}`;
   }
 
+  if (err.name === 'MulterError') {
+    statusCode = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'Image is too large. Maximum size is 5MB.';
+    } else {
+      message = err.message;
+    }
+  }
+
   if (err.status === 401 || err.statusCode === 401) {
     statusCode = 401;
     message = message || 'Authentication required';

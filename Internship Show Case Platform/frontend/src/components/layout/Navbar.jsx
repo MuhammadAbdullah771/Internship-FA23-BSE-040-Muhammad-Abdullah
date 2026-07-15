@@ -87,6 +87,12 @@ const Navbar = () => {
               <NavLink to="/dashboard" className={navLinkClass}>
                 Dashboard
               </NavLink>
+              <NavLink to="/projects" className={navLinkClass}>
+                Projects
+              </NavLink>
+              <NavLink to="/profile" className={navLinkClass}>
+                Profile
+              </NavLink>
               <div className="relative" ref={menuRef}>
                 <button
                   type="button"
@@ -127,6 +133,30 @@ const Navbar = () => {
                       onClick={() => setMenuOpen(false)}
                     >
                       Dashboard
+                    </Link>
+                    <Link
+                      to="/projects"
+                      role="menuitem"
+                      className="block rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Projects
+                    </Link>
+                    <Link
+                      to="/profile"
+                      role="menuitem"
+                      className="block rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      to="/profile/edit"
+                      role="menuitem"
+                      className="block rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Edit profile
                     </Link>
                     <button
                       type="button"
@@ -184,6 +214,20 @@ const Navbar = () => {
                   onClick={closeMenu}
                 >
                   Dashboard
+                </NavLink>
+                <NavLink
+                  to="/projects"
+                  className={navLinkClass}
+                  onClick={closeMenu}
+                >
+                  Projects
+                </NavLink>
+                <NavLink
+                  to="/profile"
+                  className={navLinkClass}
+                  onClick={closeMenu}
+                >
+                  Profile
                 </NavLink>
                 <button
                   type="button"

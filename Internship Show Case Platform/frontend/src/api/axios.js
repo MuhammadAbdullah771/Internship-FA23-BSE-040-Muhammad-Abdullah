@@ -56,6 +56,11 @@ api.interceptors.response.use(
         'Cannot reach the API. Start the backend with "npm run dev:backend" (port 5000), then try again.';
     }
 
+    if (error.response?.status === 502 || error.response?.status === 503) {
+      message =
+        'API is restarting or unavailable. Please wait a second and try again.';
+    }
+
     return Promise.reject({
       ...error,
       message,

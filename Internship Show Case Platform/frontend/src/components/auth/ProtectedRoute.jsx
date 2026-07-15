@@ -24,6 +24,10 @@ const ProtectedRoute = ({ children }) => {
           message={authError}
           onRetry={refreshAppUser}
         />
+        <p className="mt-4 text-center text-sm text-muted">
+          Make sure both servers are running with{' '}
+          <code className="text-ink">npm run dev</code> from the project root.
+        </p>
       </div>
     );
   }

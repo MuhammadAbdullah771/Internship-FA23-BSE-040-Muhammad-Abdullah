@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -11,10 +12,28 @@ connectDB();
 
 const app = express();
 
+const clerkConfigured =
+  Boolean(config.clerkPublishableKey) &&
+  Boolean(config.clerkSecretKey) &&
+  !config.clerkPublishableKey.includes('your_publishable_key') &&
+  !config.clerkSecretKey.includes('your_secret_key');
+
+/**
+ * Clerk should run early so auth state is available to all routes.
+ * Keys come from process.env (loaded in config/) — do not pass secretKey
+ * inline unless CLERK_ENCRYPTION_KEY is also set.
+ */
+if (clerkConfigured) {
+  app.use(clerkMiddleware());
+} else {
+  console.warn(
+    'Clerk keys are missing or still placeholders. Auth routes will reject requests until CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are set.'
+  );
+}
+
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow non-browser tools (no Origin) and known frontend URLs
       if (!origin || config.corsOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -28,28 +47,10 @@ app.use(
 );
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
-}
-
-const clerkConfigured =
-  Boolean(config.clerkPublishableKey) &&
-  Boolean(config.clerkSecretKey) &&
-  !config.clerkPublishableKey.includes('your_publishable_key') &&
-  !config.clerkSecretKey.includes('your_secret_key');
-
-if (clerkConfigured) {
-  app.use(
-    clerkMiddleware({
-      publishableKey: config.clerkPublishableKey,
-      secretKey: config.clerkSecretKey,
-    })
-  );
-} else {
-  console.warn(
-    'Clerk keys are missing or still placeholders. Auth routes will reject requests until CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are set.'
-  );
 }
 
 app.get('/', (req, res) => {

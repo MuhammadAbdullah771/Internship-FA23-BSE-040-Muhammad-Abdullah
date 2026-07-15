@@ -1,4 +1,4 @@
-const { getAuth } = require('@clerk/express');
+const { getAuth, verifyToken } = require('@clerk/express');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('./asyncHandler');
 const User = require('../models/User');
@@ -9,6 +9,38 @@ const isClerkConfigured = () =>
   Boolean(config.clerkSecretKey) &&
   !config.clerkPublishableKey.includes('your_publishable_key') &&
   !config.clerkSecretKey.includes('your_secret_key');
+
+const getBearerToken = (req) => {
+  const header = req.headers.authorization || req.headers.Authorization;
+  if (!header || typeof header !== 'string') return null;
+  const [scheme, token] = header.split(' ');
+  if (scheme !== 'Bearer' || !token) return null;
+  return token;
+};
+
+/**
+ * Prefer verifying the Authorization Bearer JWT (SPA pattern).
+ * Cookie-based auth via clerkMiddleware is a fallback only.
+ */
+const resolveClerkUserId = async (req) => {
+  const bearer = getBearerToken(req);
+
+  if (bearer) {
+    const payload = await verifyToken(bearer, {
+      secretKey: config.clerkSecretKey,
+      // Windows clocks often drift slightly vs Clerk; default 5s is too tight.
+      clockSkewInMs: 60_000,
+    });
+    if (payload?.sub) return payload.sub;
+  }
+
+  const auth = getAuth(req);
+  if (auth?.isAuthenticated && auth.userId) {
+    return auth.userId;
+  }
+
+  return null;
+};
 
 /**
  * Requires a valid Clerk session JWT on the request.
@@ -22,15 +54,21 @@ const requireAuth = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const auth = getAuth(req);
+  try {
+    const clerkId = await resolveClerkUserId(req);
 
-  if (!auth?.isAuthenticated || !auth.userId) {
-    throw new AppError('Authentication required. Please sign in.', 401);
+    if (!clerkId) {
+      throw new AppError('Authentication required. Please sign in.', 401);
+    }
+
+    req.clerkId = clerkId;
+    next();
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+
+    const detail = error?.reason || error?.message || 'invalid token';
+    throw new AppError(`Authentication required. Please sign in. (${detail})`, 401);
   }
-
-  req.auth = auth;
-  req.clerkId = auth.userId;
-  next();
 });
 
 /**

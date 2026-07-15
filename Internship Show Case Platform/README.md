@@ -72,3 +72,16 @@ npm run dev:frontend
 
 - **Module 1:** Project foundation & architecture — complete
 - **Module 2:** Clerk authentication & authorization — complete
+- **Module 3:** Intern profile management — complete
+
+### Profile API
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| `GET` | `/api/profiles/me` | Private | Get current profile |
+| `POST` | `/api/profiles` | Private | Create profile |
+| `PUT` | `/api/profiles/me` | Private | Update profile |
+| `POST` | `/api/profiles/me/image` | Private | Upload profile image |
+| `POST` | `/api/profiles/me/skills` | Private | Add skill |
+| `DELETE` | `/api/profiles/me/skills/:skill` | Private | Remove skill |
+| `PUT` | `/api/profiles/me/social` | Private | Update social links |
