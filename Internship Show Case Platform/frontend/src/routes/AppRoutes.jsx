@@ -17,6 +17,7 @@ const Projects = lazy(() => import('../pages/Projects'));
 const AddProject = lazy(() => import('../pages/AddProject'));
 const EditProject = lazy(() => import('../pages/EditProject'));
 const ProjectDetails = lazy(() => import('../pages/ProjectDetails'));
+const PortfolioEditor = lazy(() => import('../pages/PortfolioEditor'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
 const GuestOnly = ({ children }) => {
@@ -102,6 +103,14 @@ const AppRoutes = () => {
             element={
               <ProtectedRoute>
                 <EditProject />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="portfolio"
+            element={
+              <ProtectedRoute>
+                <PortfolioEditor />
               </ProtectedRoute>
             }
           />

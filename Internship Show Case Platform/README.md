@@ -73,6 +73,8 @@ npm run dev:frontend
 - **Module 1:** Project foundation & architecture — complete
 - **Module 2:** Clerk authentication & authorization — complete
 - **Module 3:** Intern profile management — complete
+- **Module 4:** Project management — complete
+- **Module 5:** Dynamic portfolio editor — complete
 
 ### Profile API
 
@@ -85,3 +87,18 @@ npm run dev:frontend
 | `POST` | `/api/profiles/me/skills` | Private | Add skill |
 | `DELETE` | `/api/profiles/me/skills/:skill` | Private | Remove skill |
 | `PUT` | `/api/profiles/me/social` | Private | Update social links |
+
+### Portfolio API (Module 5)
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| `GET` | `/api/portfolio/me` | Private | Get portfolio settings (+ profile & ordered projects) |
+| `PUT` | `/api/portfolio/me` | Private | Update / save all portfolio settings |
+| `PUT` | `/api/portfolio/me/visibility` | Private | Save section visibility |
+| `PUT` | `/api/portfolio/me/project-order` | Private | Save project order |
+| `PUT` | `/api/portfolio/me/theme` | Private | Save selected theme (& primary color) |
+| `PUT` | `/api/portfolio/me/customization` | Private | Save about / skills / projects / contact customization |
+
+**Portfolio settings model:** `user`, `theme`, `primaryColor`, `sectionVisibility`, `projectOrder`, `customHeadline`, `portfolioStatus`, plus nested `customization` for each section.
+
+**Frontend:** `/portfolio` — live preview, theme & color picker, section toggles, drag-and-drop project order, and save controls.

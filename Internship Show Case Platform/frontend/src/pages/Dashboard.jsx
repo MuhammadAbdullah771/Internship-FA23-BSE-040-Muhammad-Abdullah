@@ -73,10 +73,10 @@ const Dashboard = () => {
           </div>
           <div className="animate-fade-up delay-2 flex flex-wrap gap-3">
             <Link
-              to="/projects"
+              to="/portfolio"
               className="btn-ghost rounded-xl px-5 py-3 text-sm font-medium text-ink"
             >
-              Manage projects
+              Edit portfolio
             </Link>
             <Link
               to="/projects/new"
@@ -166,6 +166,12 @@ const Dashboard = () => {
                   className="text-sm font-semibold text-brand-700 hover:underline"
                 >
                   View projects →
+                </Link>
+                <Link
+                  to="/portfolio"
+                  className="text-sm font-semibold text-brand-700 hover:underline"
+                >
+                  Customize portfolio →
                 </Link>
               </div>
             </div>

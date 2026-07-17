@@ -90,6 +90,9 @@ const Navbar = () => {
               <NavLink to="/projects" className={navLinkClass}>
                 Projects
               </NavLink>
+              <NavLink to="/portfolio" className={navLinkClass}>
+                Portfolio
+              </NavLink>
               <NavLink to="/profile" className={navLinkClass}>
                 Profile
               </NavLink>
@@ -141,6 +144,14 @@ const Navbar = () => {
                       onClick={() => setMenuOpen(false)}
                     >
                       Projects
+                    </Link>
+                    <Link
+                      to="/portfolio"
+                      role="menuitem"
+                      className="block rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Portfolio
                     </Link>
                     <Link
                       to="/profile"
@@ -221,6 +232,13 @@ const Navbar = () => {
                   onClick={closeMenu}
                 >
                   Projects
+                </NavLink>
+                <NavLink
+                  to="/portfolio"
+                  className={navLinkClass}
+                  onClick={closeMenu}
+                >
+                  Portfolio
                 </NavLink>
                 <NavLink
                   to="/profile"
