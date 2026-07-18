@@ -75,6 +75,7 @@ npm run dev:frontend
 - **Module 3:** Intern profile management — complete
 - **Module 4:** Project management — complete
 - **Module 5:** Dynamic portfolio editor — complete
+- **Module 6:** Public portfolio & shareable links — complete
 
 ### Profile API
 
@@ -98,7 +99,23 @@ npm run dev:frontend
 | `PUT` | `/api/portfolio/me/project-order` | Private | Save project order |
 | `PUT` | `/api/portfolio/me/theme` | Private | Save selected theme (& primary color) |
 | `PUT` | `/api/portfolio/me/customization` | Private | Save about / skills / projects / contact customization |
+| `PUT` | `/api/portfolio/me/username` | Private | Set portfolio username (slug) |
+| `POST` | `/api/portfolio/me/username/generate` | Private | Generate a unique username suggestion |
 
-**Portfolio settings model:** `user`, `theme`, `primaryColor`, `sectionVisibility`, `projectOrder`, `customHeadline`, `portfolioStatus`, plus nested `customization` for each section.
+**Portfolio settings model:** `user`, `username`, `theme`, `primaryColor`, `sectionVisibility`, `projectOrder`, `customHeadline`, `portfolioStatus`, plus nested `customization` for each section.
 
-**Frontend:** `/portfolio` — live preview, theme & color picker, section toggles, drag-and-drop project order, and save controls.
+**Frontend:** `/portfolio` — live preview, theme & color picker, section toggles, drag-and-drop project order, username/slug controls, and save controls.
+
+### Public Portfolio API (Module 6)
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| `GET` | `/api/portfolio/check-username?username=` | Public | Check username availability |
+| `GET` | `/api/portfolio/public/:username` | Public | Full published portfolio (settings + intern + projects) |
+| `GET` | `/api/portfolio/public/:username/profile` | Public | Public intern information only |
+| `GET` | `/api/portfolio/public/:username/projects` | Public | Public projects list |
+| `GET` | `/api/portfolio/public/:username/projects/:projectId` | Public | Single public project (full details) |
+
+Public responses omit private fields (`clerkId`, auth providers, role, email unless contact visibility allows it). Only portfolios with `portfolioStatus: published` are accessible.
+
+**Frontend:** `/portfolio/:username` — public hero, about, skills, projects (modal details), contact/socials, copy link & share buttons. No authentication required.

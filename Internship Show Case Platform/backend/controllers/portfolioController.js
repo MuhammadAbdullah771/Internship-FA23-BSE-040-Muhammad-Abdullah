@@ -5,9 +5,32 @@ const Project = require('../models/Project');
 const Profile = require('../models/Profile');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const { verifyToken } = require('@clerk/express');
+const config = require('../config');
+const {
+  slugifyUsername,
+  validateUsernameFormat,
+  normalizeUsername,
+} = require('../utils/username');
 
 const isValidObjectId = (value) =>
   Boolean(value) && mongoose.Types.ObjectId.isValid(value);
+
+const tryResolveClerkId = async (req) => {
+  const header = req.headers.authorization || req.headers.Authorization;
+  if (!header || typeof header !== 'string') return null;
+  const [scheme, token] = header.split(' ');
+  if (scheme !== 'Bearer' || !token || !config.clerkSecretKey) return null;
+  try {
+    const payload = await verifyToken(token, {
+      secretKey: config.clerkSecretKey,
+      clockSkewInMs: 60_000,
+    });
+    return payload?.sub || null;
+  } catch {
+    return null;
+  }
+};
 
 const normalizeHex = (value) => {
   if (value === undefined || value === null) return undefined;
@@ -17,6 +40,41 @@ const normalizeHex = (value) => {
     throw new AppError('Primary color must be a valid hex color', 400);
   }
   return trimmed;
+};
+
+const isUsernameTaken = async (username, excludeClerkId = null) => {
+  const query = { username };
+  if (excludeClerkId) {
+    query.clerkId = { $ne: excludeClerkId };
+  }
+  const existing = await PortfolioSettings.findOne(query).select('_id').lean();
+  return Boolean(existing);
+};
+
+const generateUniqueUsername = async (seed, excludeClerkId = null) => {
+  const base =
+    slugifyUsername(seed) ||
+    `intern-${Math.random().toString(36).slice(2, 8)}`;
+  let candidate = base.length >= 3 ? base : `${base}port`;
+  candidate = candidate.slice(0, 30);
+
+  if (validateUsernameFormat(candidate)) {
+    candidate = `intern-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const next =
+      attempt === 0
+        ? candidate
+        : `${candidate.slice(0, 24)}-${attempt + 1}`.slice(0, 30);
+
+    if (validateUsernameFormat(next)) continue;
+    // eslint-disable-next-line no-await-in-loop
+    const taken = await isUsernameTaken(next, excludeClerkId);
+    if (!taken) return next;
+  }
+
+  return `intern-${Date.now().toString(36)}`.slice(0, 30);
 };
 
 const getOrCreateSettings = async (clerkId) => {
@@ -29,10 +87,12 @@ const getOrCreateSettings = async (clerkId) => {
   }
 
   const projects = await Project.find({ clerkId }).select('_id').lean();
+  const username = await generateUniqueUsername(user.fullName || user.email);
 
   settings = await PortfolioSettings.create({
     user: user._id,
     clerkId,
+    username,
     projectOrder: projects.map((project) => project._id),
   });
 
@@ -58,6 +118,111 @@ const orderProjects = (projects, projectOrder = []) => {
   });
 };
 
+const toPublicProject = (
+  project,
+  { includeFull = false, showTechnologies = true } = {}
+) => {
+  if (!project) return null;
+  const base = {
+    id: project._id,
+    title: project.title,
+    shortDescription: project.shortDescription,
+    images: project.images || [],
+    category: project.category,
+    tags: project.tags || [],
+    githubUrl: project.githubUrl || '',
+    liveDemoUrl: project.liveDemoUrl || '',
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+  };
+
+  if (showTechnologies) {
+    base.technologies = project.technologies || [];
+  }
+
+  if (includeFull) {
+    base.fullDescription = project.fullDescription;
+  }
+
+  return base;
+};
+
+const toPublicIntern = (profile, user, settings) => {
+  const custom = settings.customization || {};
+  const contact = custom.contact || {};
+  const about = custom.about || {};
+
+  const intern = {
+    fullName: profile?.fullName || user?.fullName || 'Intern',
+    professionalTitle: profile?.professionalTitle || '',
+    profileImage: profile?.profileImage || user?.profileImage || '',
+    bio: about.intro || profile?.bio || '',
+    skills: profile?.skills || [],
+  };
+
+  if (about.showLocation !== false && profile?.location) {
+    intern.location = profile.location;
+  }
+
+  if (about.showEducation !== false) {
+    if (profile?.university) intern.university = profile.university;
+    if (profile?.degree) intern.degree = profile.degree;
+    if (profile?.graduationYear) intern.graduationYear = profile.graduationYear;
+  }
+
+  if (contact.showGithub !== false && profile?.githubUrl) {
+    intern.githubUrl = profile.githubUrl;
+  }
+  if (contact.showLinkedin !== false && profile?.linkedinUrl) {
+    intern.linkedinUrl = profile.linkedinUrl;
+  }
+  if (profile?.portfolioUrl) {
+    intern.externalPortfolioUrl = profile.portfolioUrl;
+  }
+  if (contact.showEmail !== false && user?.email) {
+    intern.email = user.email;
+  }
+
+  return intern;
+};
+
+const toPublicSettings = (settings) => ({
+  username: settings.username,
+  theme: settings.theme,
+  primaryColor: settings.primaryColor,
+  customHeadline: settings.customHeadline,
+  sectionVisibility: settings.sectionVisibility,
+  customization: settings.customization,
+  portfolioStatus: settings.portfolioStatus,
+});
+
+const findPublishedByUsername = async (rawUsername) => {
+  const username = normalizeUsername(rawUsername);
+  if (!username) {
+    throw new AppError('Username is required', 400);
+  }
+
+  const settings = await PortfolioSettings.findOne({ username });
+  if (!settings || settings.portfolioStatus !== 'published' || !settings.username) {
+    throw new AppError('Portfolio not found', 404);
+  }
+
+  return settings;
+};
+
+const loadPublishedOwnerData = async (settings) => {
+  const [profile, projects, user] = await Promise.all([
+    Profile.findOne({ clerkId: settings.clerkId }),
+    Project.find({ clerkId: settings.clerkId }).sort({ createdAt: -1 }),
+    User.findOne({ clerkId: settings.clerkId }).select(
+      'fullName email profileImage'
+    ),
+  ]);
+
+  const ordered = orderProjects(projects, settings.projectOrder);
+  return { profile, projects: ordered, user };
+};
+
 const buildEditorPayload = async (clerkId, settings) => {
   const [profile, projects, user] = await Promise.all([
     Profile.findOne({ clerkId }),
@@ -67,7 +232,6 @@ const buildEditorPayload = async (clerkId, settings) => {
 
   const orderedProjects = orderProjects(projects, settings.projectOrder);
 
-  // Keep projectOrder in sync with current projects (append new ones).
   const existingIds = new Set(settings.projectOrder.map(String));
   const missing = orderedProjects
     .map((project) => project._id)
@@ -83,6 +247,14 @@ const buildEditorPayload = async (clerkId, settings) => {
     await settings.save();
   }
 
+  if (!settings.username) {
+    settings.username = await generateUniqueUsername(
+      profile?.fullName || user?.fullName || user?.email || 'intern',
+      clerkId
+    );
+    await settings.save();
+  }
+
   return {
     settings,
     profile,
@@ -95,6 +267,7 @@ const buildEditorPayload = async (clerkId, settings) => {
           profileImage: user.profileImage,
         }
       : null,
+    publicUrl: settings.username ? `/portfolio/${settings.username}` : null,
     themes: PortfolioSettings.THEMES,
     statuses: PortfolioSettings.STATUSES,
   };
@@ -130,6 +303,7 @@ const updateMyPortfolio = asyncHandler(async (req, res) => {
     customHeadline,
     portfolioStatus,
     customization,
+    username,
   } = req.body;
 
   if (theme !== undefined) {
@@ -165,9 +339,22 @@ const updateMyPortfolio = asyncHandler(async (req, res) => {
     settings.customHeadline = String(customHeadline || '').trim();
   }
 
+  if (username !== undefined) {
+    const next = normalizeUsername(username);
+    const formatError = validateUsernameFormat(next);
+    if (formatError) throw new AppError(formatError, 400);
+    if (await isUsernameTaken(next, req.clerkId)) {
+      throw new AppError('Username is already taken', 409);
+    }
+    settings.username = next;
+  }
+
   if (portfolioStatus !== undefined) {
     if (!PortfolioSettings.STATUSES.includes(portfolioStatus)) {
       throw new AppError('Portfolio status must be draft or published', 400);
+    }
+    if (portfolioStatus === 'published' && !settings.username) {
+      throw new AppError('Set a portfolio username before publishing', 400);
     }
     settings.portfolioStatus = portfolioStatus;
   }
@@ -206,7 +393,8 @@ const applyCustomization = (settings, customization) => {
   if (customization.skills && typeof customization.skills === 'object') {
     const skills = customization.skills;
     if (skills.title !== undefined) {
-      settings.customization.skills.title = String(skills.title || '').trim() || 'Skills';
+      settings.customization.skills.title =
+        String(skills.title || '').trim() || 'Skills';
     }
     if (skills.layout === 'chips' || skills.layout === 'list') {
       settings.customization.skills.layout = skills.layout;
@@ -220,7 +408,8 @@ const applyCustomization = (settings, customization) => {
         String(projects.title || '').trim() || 'Projects';
     }
     if (typeof projects.showTechnologies === 'boolean') {
-      settings.customization.projects.showTechnologies = projects.showTechnologies;
+      settings.customization.projects.showTechnologies =
+        projects.showTechnologies;
     }
   }
 
@@ -231,7 +420,9 @@ const applyCustomization = (settings, customization) => {
         String(contact.title || '').trim() || 'Get in touch';
     }
     if (contact.message !== undefined) {
-      settings.customization.contact.message = String(contact.message || '').trim();
+      settings.customization.contact.message = String(
+        contact.message || ''
+      ).trim();
     }
     if (typeof contact.showEmail === 'boolean') {
       settings.customization.contact.showEmail = contact.showEmail;
@@ -294,7 +485,6 @@ const saveProjectOrder = asyncHandler(async (req, res) => {
   const unique = [...new Set(cleaned)];
 
   if (unique.length !== ownedIds.size) {
-    // Append any owned projects missing from the payload so order stays complete.
     owned.forEach((project) => {
       const id = String(project._id);
       if (!unique.includes(id)) unique.push(id);
@@ -369,6 +559,216 @@ const saveCustomization = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Check username availability
+ * @route   GET /api/portfolio/check-username?username=
+ * @access  Public
+ */
+const checkUsernameAvailability = asyncHandler(async (req, res) => {
+  const username = normalizeUsername(req.query.username);
+  const formatError = validateUsernameFormat(username);
+
+  if (formatError) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        username,
+        available: false,
+        reason: formatError,
+      },
+    });
+  }
+
+  const excludeClerkId = req.clerkId || (await tryResolveClerkId(req));
+  const taken = await isUsernameTaken(username, excludeClerkId);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      username,
+      available: !taken,
+      reason: taken ? 'Username is already taken' : null,
+    },
+  });
+});
+
+/**
+ * @desc    Generate a unique username suggestion for the current user
+ * @route   POST /api/portfolio/me/username/generate
+ * @access  Private
+ */
+const generateMyUsername = asyncHandler(async (req, res) => {
+  const settings = await getOrCreateSettings(req.clerkId);
+  const user = await User.findOne({ clerkId: req.clerkId });
+  const profile = await Profile.findOne({ clerkId: req.clerkId });
+  const seed =
+    req.body?.seed ||
+    profile?.fullName ||
+    user?.fullName ||
+    user?.email ||
+    'intern';
+
+  const username = await generateUniqueUsername(seed, req.clerkId);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      username,
+      currentUsername: settings.username || null,
+    },
+  });
+});
+
+/**
+ * @desc    Set / update portfolio username (slug)
+ * @route   PUT /api/portfolio/me/username
+ * @access  Private
+ */
+const setMyUsername = asyncHandler(async (req, res) => {
+  const settings = await getOrCreateSettings(req.clerkId);
+  const username = normalizeUsername(req.body.username);
+  const formatError = validateUsernameFormat(username);
+  if (formatError) throw new AppError(formatError, 400);
+
+  if (await isUsernameTaken(username, req.clerkId)) {
+    throw new AppError('Username is already taken', 409);
+  }
+
+  settings.username = username;
+  await settings.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Username saved',
+    data: {
+      settings,
+      publicUrl: `/portfolio/${settings.username}`,
+    },
+  });
+});
+
+/**
+ * @desc    Get public portfolio by username
+ * @route   GET /api/portfolio/public/:username
+ * @access  Public
+ */
+const getPublicPortfolio = asyncHandler(async (req, res) => {
+  const settings = await findPublishedByUsername(req.params.username);
+  const { profile, projects, user } = await loadPublishedOwnerData(settings);
+  const showTechnologies =
+    settings.customization?.projects?.showTechnologies !== false;
+
+  const publicProjects =
+    settings.sectionVisibility?.projects === false
+      ? []
+      : projects.map((project) =>
+          toPublicProject(project, { showTechnologies })
+        );
+
+  res.status(200).json({
+    success: true,
+    data: {
+      settings: toPublicSettings(settings),
+      intern: toPublicIntern(profile, user, settings),
+      projects: publicProjects,
+    },
+  });
+});
+
+/**
+ * @desc    Get public intern information
+ * @route   GET /api/portfolio/public/:username/profile
+ * @access  Public
+ */
+const getPublicIntern = asyncHandler(async (req, res) => {
+  const settings = await findPublishedByUsername(req.params.username);
+  const { profile, user } = await loadPublishedOwnerData(settings);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      username: settings.username,
+      intern: toPublicIntern(profile, user, settings),
+      settings: {
+        customHeadline: settings.customHeadline,
+        theme: settings.theme,
+        primaryColor: settings.primaryColor,
+        sectionVisibility: settings.sectionVisibility,
+      },
+    },
+  });
+});
+
+/**
+ * @desc    Get public projects for a portfolio
+ * @route   GET /api/portfolio/public/:username/projects
+ * @access  Public
+ */
+const getPublicProjects = asyncHandler(async (req, res) => {
+  const settings = await findPublishedByUsername(req.params.username);
+  const { projects } = await loadPublishedOwnerData(settings);
+  const showTechnologies =
+    settings.customization?.projects?.showTechnologies !== false;
+
+  if (settings.sectionVisibility?.projects === false) {
+    return res.status(200).json({
+      success: true,
+      data: { projects: [], count: 0 },
+    });
+  }
+
+  const publicProjects = projects.map((project) =>
+    toPublicProject(project, { showTechnologies })
+  );
+
+  res.status(200).json({
+    success: true,
+    data: {
+      projects: publicProjects,
+      count: publicProjects.length,
+    },
+  });
+});
+
+/**
+ * @desc    Get a single public project
+ * @route   GET /api/portfolio/public/:username/projects/:projectId
+ * @access  Public
+ */
+const getPublicProject = asyncHandler(async (req, res) => {
+  const settings = await findPublishedByUsername(req.params.username);
+
+  if (settings.sectionVisibility?.projects === false) {
+    throw new AppError('Project not found', 404);
+  }
+
+  if (!isValidObjectId(req.params.projectId)) {
+    throw new AppError('Project not found', 404);
+  }
+
+  const project = await Project.findOne({
+    _id: req.params.projectId,
+    clerkId: settings.clerkId,
+  });
+
+  if (!project) {
+    throw new AppError('Project not found', 404);
+  }
+
+  const showTechnologies =
+    settings.customization?.projects?.showTechnologies !== false;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      project: toPublicProject(project, {
+        includeFull: true,
+        showTechnologies,
+      }),
+    },
+  });
+});
+
 module.exports = {
   getMyPortfolio,
   updateMyPortfolio,
@@ -376,4 +776,11 @@ module.exports = {
   saveProjectOrder,
   saveTheme,
   saveCustomization,
+  checkUsernameAvailability,
+  generateMyUsername,
+  setMyUsername,
+  getPublicPortfolio,
+  getPublicIntern,
+  getPublicProjects,
+  getPublicProject,
 };

@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  checkUsernameAvailability,
+  generateMyUsername,
   getMyPortfolio,
   saveCustomization,
   saveProjectOrder,
   saveSectionVisibility,
   saveTheme,
+  setMyUsername,
   updateMyPortfolio,
 } from '../api/portfolio';
 import PortfolioPreview from '../components/portfolio/PortfolioPreview';
 import ProjectOrderList from '../components/portfolio/ProjectOrderList';
+import ShareBar from '../components/portfolio/ShareBar';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import PageShell from '../components/ui/PageShell';
@@ -54,6 +58,7 @@ const defaultDraft = {
   primaryColor: '#1d6f52',
   customHeadline: '',
   portfolioStatus: 'draft',
+  username: '',
   sectionVisibility: {
     about: true,
     skills: true,
@@ -121,6 +126,8 @@ const PortfolioEditor = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [panel, setPanel] = useState('theme');
+  const [usernameHint, setUsernameHint] = useState('');
+  const [usernameBusy, setUsernameBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -139,6 +146,7 @@ const PortfolioEditor = () => {
           primaryColor: settings.primaryColor || '#1d6f52',
           customHeadline: settings.customHeadline || '',
           portfolioStatus: settings.portfolioStatus || 'draft',
+          username: settings.username || '',
           sectionVisibility: {
             about: settings.sectionVisibility?.about !== false,
             skills: settings.sectionVisibility?.skills !== false,
@@ -229,6 +237,7 @@ const PortfolioEditor = () => {
         primaryColor: draft.primaryColor,
         customHeadline: draft.customHeadline,
         portfolioStatus: draft.portfolioStatus,
+        username: draft.username,
         sectionVisibility: draft.sectionVisibility,
         projectOrder: projects.map((project) => project._id),
         customization: draft.customization,
@@ -237,6 +246,9 @@ const PortfolioEditor = () => {
       if (data.projects) setProjects(data.projects);
       if (data.profile) setProfile(data.profile);
       if (data.user) setUser(data.user);
+      if (data.settings?.username) {
+        setDraft((prev) => ({ ...prev, username: data.settings.username }));
+      }
       flashSuccess('Portfolio changes saved');
     } catch (err) {
       setError(err.message || 'Failed to save portfolio');
@@ -303,6 +315,59 @@ const PortfolioEditor = () => {
     }
   };
 
+  const handleCheckUsername = async () => {
+    setUsernameBusy(true);
+    setUsernameHint('');
+    try {
+      const res = await checkUsernameAvailability(draft.username);
+      const result = res.data?.data;
+      if (result?.available) {
+        setUsernameHint('Username is available');
+      } else {
+        setUsernameHint(result?.reason || 'Username is not available');
+      }
+    } catch (err) {
+      setUsernameHint(err.message || 'Unable to check username');
+    } finally {
+      setUsernameBusy(false);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    setUsernameBusy(true);
+    setError('');
+    try {
+      const res = await setMyUsername(draft.username);
+      const next = res.data?.data?.settings?.username || draft.username;
+      setDraft((prev) => ({ ...prev, username: next }));
+      flashSuccess('Username saved');
+      setUsernameHint('');
+    } catch (err) {
+      setError(err.message || 'Failed to save username');
+    } finally {
+      setUsernameBusy(false);
+    }
+  };
+
+  const handleGenerateUsername = async () => {
+    setUsernameBusy(true);
+    setError('');
+    try {
+      const res = await generateMyUsername(
+        profile?.fullName || user?.fullName || ''
+      );
+      const next = res.data?.data?.username || '';
+      if (next) {
+        setDraft((prev) => ({ ...prev, username: next }));
+        setUsernameHint('Suggestion ready — save to claim it');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to generate username');
+    } finally {
+      setUsernameBusy(false);
+    }
+  };
+
   const panels = [
     { id: 'theme', label: 'Theme' },
     { id: 'sections', label: 'Sections' },
@@ -311,6 +376,8 @@ const PortfolioEditor = () => {
     { id: 'projects', label: 'Projects' },
     { id: 'contact', label: 'Contact' },
   ];
+
+  const publicPath = draft.username ? `/portfolio/${draft.username}` : '';
 
   return (
     <PageShell>
@@ -329,6 +396,14 @@ const PortfolioEditor = () => {
             </p>
           </div>
           <div className="animate-fade-up delay-2 flex flex-wrap items-center gap-3">
+            {publicPath && draft.portfolioStatus === 'published' && (
+              <Link
+                to={publicPath}
+                className="btn-ghost rounded-xl px-4 py-2.5 text-sm font-medium text-ink"
+              >
+                View public page
+              </Link>
+            )}
             <Link
               to="/projects"
               className="btn-ghost rounded-xl px-4 py-2.5 text-sm font-medium text-ink"
@@ -399,6 +474,90 @@ const PortfolioEditor = () => {
                     ))}
                   </div>
                 </div>
+
+                <label className="mt-5 block">
+                  <span className="text-sm font-medium text-ink">
+                    Public username
+                  </span>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <div className="relative flex-1">
+                      <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-xs text-muted">
+                        /portfolio/
+                      </span>
+                      <input
+                        type="text"
+                        value={draft.username}
+                        onChange={(event) =>
+                          setDraft((prev) => ({
+                            ...prev,
+                            username: event.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]/g, ''),
+                          }))
+                        }
+                        maxLength={30}
+                        placeholder="your-name"
+                        className={`${fieldClass} pl-[5.75rem]`}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={usernameBusy || !draft.username}
+                        onClick={handleCheckUsername}
+                        className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm font-medium text-ink hover:bg-surface disabled:opacity-60"
+                      >
+                        Check
+                      </button>
+                      <button
+                        type="button"
+                        disabled={usernameBusy}
+                        onClick={handleGenerateUsername}
+                        className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm font-medium text-ink hover:bg-surface disabled:opacity-60"
+                      >
+                        Generate
+                      </button>
+                      <button
+                        type="button"
+                        disabled={usernameBusy || !draft.username}
+                        onClick={handleSaveUsername}
+                        className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm font-medium text-ink hover:bg-surface disabled:opacity-60"
+                      >
+                        Save slug
+                      </button>
+                    </div>
+                  </div>
+                  {usernameHint && (
+                    <p className="mt-2 text-xs text-muted">{usernameHint}</p>
+                  )}
+                </label>
+
+                {publicPath && draft.portfolioStatus === 'published' && (
+                  <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
+                    <p className="text-sm font-medium text-brand-900">
+                      Live at{' '}
+                      <Link
+                        to={publicPath}
+                        className="font-semibold underline-offset-2 hover:underline"
+                      >
+                        {publicPath}
+                      </Link>
+                    </p>
+                    <div className="mt-3">
+                      <ShareBar
+                        url={publicPath}
+                        title={`${profile?.fullName || 'Intern'} — Portfolio`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {publicPath && draft.portfolioStatus !== 'published' && (
+                  <p className="mt-4 text-xs text-muted">
+                    Public link ready at {publicPath} — publish to make it
+                    visible.
+                  </p>
+                )}
 
                 <label className="mt-5 block">
                   <span className="text-sm font-medium text-ink">

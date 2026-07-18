@@ -121,6 +121,23 @@ const portfolioSettingsSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    /**
+     * Public shareable slug used in /portfolio/:username
+     */
+    username: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+      maxlength: [30, 'Username cannot exceed 30 characters'],
+      match: [
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+        'Username may only contain lowercase letters, numbers, and hyphens',
+      ],
+      sparse: true,
+      unique: true,
+      index: true,
+    },
     theme: {
       type: String,
       enum: {
