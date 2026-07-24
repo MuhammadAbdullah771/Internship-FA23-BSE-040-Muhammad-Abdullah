@@ -7,6 +7,7 @@ node_modules/
 .env.*.local
 
 # Build
+client/dist/
 dist/
 build/
 coverage/
@@ -16,8 +17,13 @@ coverage/
 .DS_Store
 Thumbs.db
 
-# Uploads (later modules)
-backend/uploads/
+# Uploads
+uploads/**
+!uploads/.gitkeep
+
+# Leftover split-app folders (if any)
+backend/
+frontend/
 
 # Editor
 .vscode/

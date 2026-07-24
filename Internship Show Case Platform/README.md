@@ -1,72 +1,80 @@
 # Intern Project Showcase Platform
 
-Production-ready MERN application where interns create profiles, manage projects, customize portfolios, and share public portfolio links with recruiters.
+Full-stack MERN application where interns create profiles, manage projects, customize portfolios, and share public portfolio links with recruiters.
 
 ## Stack
 
-- **Frontend:** React (Vite), React Router, Axios, Tailwind CSS, Clerk
-- **Backend:** Node.js, Express, MongoDB, Mongoose, Clerk (`@clerk/express`)
+- **Server:** Node.js, Express, MongoDB, Mongoose, Clerk (`@clerk/express`)
+- **Client:** React (Vite), React Router, Axios, Tailwind CSS, Clerk React
+- **One package** — Express API + React UI in a single project
 
 ## Project structure
 
 ```
-├── backend/          # Express API
-└── frontend/         # React (Vite) client
+├── server.js           # Express entry (API + serves client/dist in production)
+├── config/             # Env + database
+├── models/             # Mongoose models
+├── controllers/        # Route handlers
+├── routes/             # Express routers
+├── middleware/         # Auth, security, uploads, errors
+├── utils/              # Helpers
+├── uploads/            # Local media
+├── client/             # React (Vite) UI
+│   ├── index.html
+│   ├── vite.config.mjs
+│   ├── public/
+│   └── src/
+├── .env.example
+├── DEPLOYMENT.md
+└── package.json        # Single dependency tree
 ```
 
 ## Prerequisites
 
 - Node.js 18+
-- MongoDB running locally (or update `MONGODB_URI`)
+- MongoDB running locally (or set `MONGODB_URI`)
 - A Clerk application ([dashboard.clerk.com](https://dashboard.clerk.com))
-
-## Clerk setup
-
-1. Create a Clerk application.
-2. Enable **Email** + **Password** under User & Authentication.
-3. Copy API keys into env files:
-
-**`backend/.env`**
-```
-CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-```
-
-**`frontend/.env`**
-```
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-```
-
-4. In Clerk Dashboard → Configure → Paths (or Domains), allow `http://localhost:5173`.
-
-> Passwords are hashed and stored by **Clerk**, not in MongoDB. The app User model stores `clerkId`, profile fields, and role.
 
 ## Setup
 
-From the project root:
+1. Copy environment file and fill in Clerk keys:
 
 ```bash
-npm run install:all
+cp .env.example .env
+```
+
+2. Install and run (one install for the whole app):
+
+```bash
+npm install
 npm run dev
 ```
 
-That starts both servers:
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:5000`
+That starts:
+- API server: `http://localhost:5000`
+- Vite client: `http://localhost:5173` (proxies `/api` and `/uploads` to the API)
 
-Or run them separately:
+> Passwords are hashed and stored by **Clerk**, not in MongoDB.
+
+## Production (single server)
 
 ```bash
-npm run dev:backend
-npm run dev:frontend
+npm install
+npm run build      # builds client/dist
+npm start          # Express serves API + React SPA
 ```
 
-## Auth API (Module 2)
+Set `CLIENT_URL` to your public app URL. See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `POST` | `/api/auth/sync` | Private (Clerk JWT) | Upsert MongoDB user from Clerk |
-| `GET` | `/api/auth/me` | Private (Clerk JWT) | Current app user |
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | API + Vite client together |
+| `npm run dev:server` | API only (nodemon) |
+| `npm run dev:client` | Vite only |
+| `npm run build` | Production React build → `client/dist` |
+| `npm start` | Production Express (serves API + SPA) |
 
 ## Module status
 
@@ -76,46 +84,24 @@ npm run dev:frontend
 - **Module 4:** Project management — complete
 - **Module 5:** Dynamic portfolio editor — complete
 - **Module 6:** Public portfolio & shareable links — complete
+- **Module 7:** Search, discovery & employer view — complete
+- **Module 8:** Dashboard, analytics, security & deployment — complete
 
-### Profile API
+### Core APIs
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `GET` | `/api/profiles/me` | Private | Get current profile |
-| `POST` | `/api/profiles` | Private | Create profile |
-| `PUT` | `/api/profiles/me` | Private | Update profile |
-| `POST` | `/api/profiles/me/image` | Private | Upload profile image |
-| `POST` | `/api/profiles/me/skills` | Private | Add skill |
-| `DELETE` | `/api/profiles/me/skills/:skill` | Private | Remove skill |
-| `PUT` | `/api/profiles/me/social` | Private | Update social links |
+| Area | Base path |
+|------|-----------|
+| Health | `/api/health` |
+| Auth | `/api/auth` |
+| Profiles | `/api/profiles` |
+| Projects | `/api/projects` |
+| Portfolio | `/api/portfolio` |
+| Explore | `/api/explore` |
+| Dashboard | `/api/dashboard` |
+| Account | `/api/account` |
 
-### Portfolio API (Module 5)
+Full endpoint tables and feature notes are maintained in git history / module docs above. Public portfolios: `/portfolio/:username`. Employer discovery: `/explore`, `/interns`.
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `GET` | `/api/portfolio/me` | Private | Get portfolio settings (+ profile & ordered projects) |
-| `PUT` | `/api/portfolio/me` | Private | Update / save all portfolio settings |
-| `PUT` | `/api/portfolio/me/visibility` | Private | Save section visibility |
-| `PUT` | `/api/portfolio/me/project-order` | Private | Save project order |
-| `PUT` | `/api/portfolio/me/theme` | Private | Save selected theme (& primary color) |
-| `PUT` | `/api/portfolio/me/customization` | Private | Save about / skills / projects / contact customization |
-| `PUT` | `/api/portfolio/me/username` | Private | Set portfolio username (slug) |
-| `POST` | `/api/portfolio/me/username/generate` | Private | Generate a unique username suggestion |
+## Deployment
 
-**Portfolio settings model:** `user`, `username`, `theme`, `primaryColor`, `sectionVisibility`, `projectOrder`, `customHeadline`, `portfolioStatus`, plus nested `customization` for each section.
-
-**Frontend:** `/portfolio` — live preview, theme & color picker, section toggles, drag-and-drop project order, username/slug controls, and save controls.
-
-### Public Portfolio API (Module 6)
-
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| `GET` | `/api/portfolio/check-username?username=` | Public | Check username availability |
-| `GET` | `/api/portfolio/public/:username` | Public | Full published portfolio (settings + intern + projects) |
-| `GET` | `/api/portfolio/public/:username/profile` | Public | Public intern information only |
-| `GET` | `/api/portfolio/public/:username/projects` | Public | Public projects list |
-| `GET` | `/api/portfolio/public/:username/projects/:projectId` | Public | Single public project (full details) |
-
-Public responses omit private fields (`clerkId`, auth providers, role, email unless contact visibility allows it). Only portfolios with `portfolioStatus: published` are accessible.
-
-**Frontend:** `/portfolio/:username` — public hero, about, skills, projects (modal details), contact/socials, copy link & share buttons. No authentication required.
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for MongoDB Atlas, Clerk, and single-host full-stack deploy steps.
